@@ -18,6 +18,15 @@ class PantryAdd(BaseModel):
     ingredient_id: int
 
 
+class RecipeMatchOut(BaseModel):
+    recipe_id: int
+    title: str
+    match_ratio: float
+    have: list[str]
+    missing: list[str]
+    prep_minutes: int | None
+
+
 class PantryItemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
