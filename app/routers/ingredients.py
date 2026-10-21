@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,10 +16,20 @@ SEARCH_LIMIT = 10
 
 @router.get("", response_model=list[IngredientOut])
 def search_ingredients(q: str = "", db: Session = Depends(get_db)) -> list[Ingredient]:
-    stmt = select(Ingredient).order_by(Ingredient.name).limit(SEARCH_LIMIT)
+    stmt = select(Ingredient).limit(SEARCH_LIMIT)
     normalized = normalize(q)
     if normalized:
-        stmt = stmt.where(Ingredient.normalized.contains(normalized, autoescape=True))
+        # Önce tam eşleşme, sonra önek, sonra içeren: tam eşleşme ilk 10'un dışında kalmasın
+        relevance = case(
+            (Ingredient.normalized == normalized, 0),
+            (Ingredient.normalized.startswith(normalized, autoescape=True), 1),
+            else_=2,
+        )
+        stmt = stmt.where(Ingredient.normalized.contains(normalized, autoescape=True)).order_by(
+            relevance, Ingredient.name
+        )
+    else:
+        stmt = stmt.order_by(Ingredient.name)
     return list(db.scalars(stmt))
 
 

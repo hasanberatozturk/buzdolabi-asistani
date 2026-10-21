@@ -62,6 +62,8 @@ tests/
 ### Türkçe metin
 - Malzeme adları kaydedilirken ve aranırken her zaman `app/utils/text.py` içindeki `normalize()` kullanılır; arama `normalized` sütununda yapılır.
 - Python'ın `.lower()` / `.casefold()` fonksiyonunu tek başına veya SQL `LOWER()`/`ILIKE` kullanma; Türkçe `İ`/`I` harflerini yanlış işler.
+- `normalize()` `İ`/`I`/`ı` harflerini `i`'ye katlar (İngilizce klavyeyle yazılan "ispanak" da "Ispanak"ı bulsun diye). Fonksiyon değişirse `normalized` sütununu yeniden hesaplayan bir veri migration'ı gerekir.
+- Yol/sorgu parametresi olan her `id` ve `offset` `1..MAX_ID` (`app/schemas.py`) ile sınırlanır; daha büyük değer veritabanında 500 hatasına yol açar.
 
 ### Güvenlik ve gizli bilgiler
 - Şifre, bağlantı dizesi veya anahtarı koda, migration'a, teste ya da commit'e yazma. Her şey ortam değişkeninden okunur (`.env` yerelde, Vercel panelinde yayında).

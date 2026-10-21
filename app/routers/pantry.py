@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
 from app.models import Ingredient, PantryItem
-from app.schemas import PantryAdd, PantryItemOut
+from app.schemas import MAX_ID, PantryAdd, PantryItemOut
 from app.security import require_api_key
 
 router = APIRouter(prefix="/api/pantry", tags=["pantry"])
@@ -42,7 +42,9 @@ def add_to_pantry(payload: PantryAdd, db: Session = Depends(get_db)) -> PantryIt
 
 
 @router.delete("/{item_id}", status_code=204, dependencies=[Depends(require_api_key)])
-def remove_from_pantry(item_id: int, db: Session = Depends(get_db)) -> Response:
+def remove_from_pantry(
+    item_id: int = Path(ge=1, le=MAX_ID), db: Session = Depends(get_db)
+) -> Response:
     item = db.get(PantryItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Buzdolabında böyle bir kayıt yok.")

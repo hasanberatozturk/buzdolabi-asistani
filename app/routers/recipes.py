@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
 from app.models import PantryItem, Recipe, RecipeIngredient
 from app.schemas import (
+    MAX_ID,
     RecipeDetail,
     RecipeIn,
     RecipeIngredientOut,
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 @router.get("", response_model=RecipePage)
 def list_recipes(
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=MAX_ID),
     db: Session = Depends(get_db),
 ) -> RecipePage:
     total = db.scalar(select(func.count(Recipe.id))) or 0
@@ -129,7 +130,9 @@ def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDet
     "/{recipe_id}", response_model=RecipeDetail, dependencies=[Depends(require_api_key)]
 )
 def update_recipe(
-    recipe_id: int, payload: RecipeIn, db: Session = Depends(get_db)
+    payload: RecipeIn,
+    recipe_id: int = Path(ge=1, le=MAX_ID),
+    db: Session = Depends(get_db),
 ) -> RecipeDetail:
     recipe = _load_recipe(db, recipe_id)
     _apply_fields(recipe, payload)
@@ -139,14 +142,18 @@ def update_recipe(
 
 
 @router.delete("/{recipe_id}", status_code=204, dependencies=[Depends(require_api_key)])
-def delete_recipe(recipe_id: int, db: Session = Depends(get_db)) -> Response:
+def delete_recipe(
+    recipe_id: int = Path(ge=1, le=MAX_ID), db: Session = Depends(get_db)
+) -> Response:
     db.delete(_load_recipe(db, recipe_id))
     db.commit()
     return Response(status_code=204)
 
 
 @router.get("/{recipe_id}", response_model=RecipeDetail)
-def get_recipe(recipe_id: int, db: Session = Depends(get_db)) -> RecipeDetail:
+def get_recipe(
+    recipe_id: int = Path(ge=1, le=MAX_ID), db: Session = Depends(get_db)
+) -> RecipeDetail:
     return _to_detail(db, _load_recipe(db, recipe_id))
 
 

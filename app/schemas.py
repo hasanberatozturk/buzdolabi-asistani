@@ -7,6 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
+# Postgres `integer` (int4) üst sınırı; daha büyük id/offset veritabanında 500 hatasına yol açar
+MAX_ID = 2**31 - 1
+
+
 class IngredientCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
@@ -19,7 +23,7 @@ class IngredientOut(BaseModel):
 
 
 class PantryAdd(BaseModel):
-    ingredient_id: int
+    ingredient_id: int = Field(ge=1, le=MAX_ID)
 
 
 class RecipeMatchOut(BaseModel):

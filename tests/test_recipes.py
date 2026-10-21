@@ -63,6 +63,18 @@ def test_recipe_detail_returns_404_for_unknown_id(client):
     assert response.json()["detail"] == "Tarif bulunamadı."
 
 
+def test_out_of_range_ids_and_offsets_are_rejected_not_500(client):
+    http, _ = client
+    huge = 99999999999999999999
+    body = {"title": "T", "instructions": "x", "ingredients": [{"name": "Un"}]}
+
+    assert http.get(f"/api/recipes/{huge}").status_code == 422
+    assert http.put(f"/api/recipes/{huge}", json=body).status_code == 422
+    assert http.delete(f"/api/recipes/{huge}").status_code == 422
+    assert http.get("/api/recipes/0").status_code == 422
+    assert http.get("/api/recipes", params={"offset": huge}).status_code == 422
+
+
 def test_recipe_detail_rejects_non_numeric_id(client):
     http, _ = client
     assert http.get("/api/recipes/abc").status_code == 422

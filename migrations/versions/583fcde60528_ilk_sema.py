@@ -69,8 +69,16 @@ def upgrade() -> None:
     # ### end Alembic commands ###
 
     # Supabase Data API'sini kapat: RLS açık, policy yok. Sadece Postgres'te çalışır.
-    if op.get_bind().dialect.name == "postgresql":
-        for table in ("ingredients", "recipes", "recipe_ingredients", "pantry_items"):
+    # alembic_version'ı Alembic migration'dan önce kendisi oluşturur; o da public şemasında
+    # olduğu için burada kapatılır. (op.get_context() çevrimdışı --sql modunda da çalışır.)
+    if op.get_context().dialect.name == "postgresql":
+        for table in (
+            "ingredients",
+            "recipes",
+            "recipe_ingredients",
+            "pantry_items",
+            "alembic_version",
+        ):
             op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
 
 

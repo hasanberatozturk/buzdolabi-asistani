@@ -157,7 +157,7 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 ### Tarifler
 | Metot | Yol | Açıklama |
 |---|---|---|
-| GET | `/api/recipes?limit=20&offset=0` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100 |
+| GET | `/api/recipes?limit=20&offset=0` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100, `offset` ≥ 0 |
 | GET | `/api/recipes/{id}` | Tarif detayı. Her malzemede `in_pantry` alanı vardır (buzdolabında var ya da temel malzeme) |
 | POST | `/api/recipes` | Tarif ekle. Malzemeler ad ile gönderilir (`{name, quantity, unit, is_optional}`); ad normalize edilip mevcut malzemeyle eşleşir, yoksa oluşturulur. En az 1 malzeme gerekir, aynı malzeme iki kez eklenemez (400) |
 | PUT | `/api/recipes/{id}` | Tarif güncelle (gövde POST ile aynı; malzeme listesi tamamen değiştirilir) |
@@ -213,13 +213,17 @@ Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/
 **Ek kurallar:** Zorunlu malzemesi olmayan tarifler ve buzdolabındaki hiçbir malzemeyi içermeyen tarifler listelenmez; buzdolabı boşsa sonuç boştur.
 
 **Türkçe normalizasyon (`app/utils/text.py`):**
-Python'da `"İ".lower()` sonucu `"i̇"` (noktalı birleşik karakter) olur ve aramaları bozar. Bu yüzden küçük harfe çevirmeden önce `İ → i` ve `I → ı` dönüşümleri elle yapılmalı, ardından boşluklar temizlenmeli:
+Python'da `"İ".lower()` sonucu `"i̇"` (noktalı birleşik karakter) olur ve aramaları bozar. Ayrıca kullanıcılar İngilizce klavyeyle sık sık "ispanak" yazar, kayıt ise "Ispanak"tır. Bu yüzden `normalized` bir **karşılaştırma anahtarıdır**: `İ`, `I` ve `ı` harflerinin hepsi `i`'ye katlanır, sonra küçük harfe çevrilir ve boşluklar temizlenir. Görünen ad ayrıca `name` sütununda olduğu gibi kalır:
 
 ```python
 def normalize(text: str) -> str:
-    text = text.strip().replace("İ", "i").replace("I", "ı")
+    text = text.strip().replace("İ", "i").replace("I", "i").replace("ı", "i")
     return " ".join(text.lower().split())
 ```
+
+Bu anahtar değişirse `normalized` sütunu yeniden hesaplanmalıdır (veri migration'ı); aksi hâlde eski kayıtlar aranamaz.
+
+**Arama sıralaması:** `GET /api/ingredients?q=` önce tam eşleşmeyi, sonra öneki, sonra içerenleri döndürür (en fazla 10), böylece tam eşleşme kısa sorgularda listenin dışında kalmaz.
 
 ---
 
@@ -270,6 +274,7 @@ ALTER TABLE ingredients        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pantry_items       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alembic_version    ENABLE ROW LEVEL SECURITY;  -- Alembic'in kendi tablosu da public şemasında
 ```
 
 ### Alembic ipucu
@@ -410,7 +415,7 @@ __pycache__/
 ### Deploy sonrası kontrol listesi
 - [ ] `https://<proje>.vercel.app/api/health` → veritabanı bağlantısı OK
 - [ ] Ana sayfa açılıyor, CSS/JS yükleniyor (CDN)
-- [ ] Malzeme arama Türkçe karakterlerle çalışıyor (ör. "ıspanak", "İrmik")
+- [ ] Malzeme arama Türkçe karakterlerle çalışıyor ("ıspanak", "ispanak" ve "İrmik" aynı sonucu bulmalı)
 - [ ] Tarif ekle → sayfayı yenile → tarif hâlâ orada (veri Supabase'e yazılıyor)
 - [ ] Vercel loglarında "prepared statement" veya bağlantı hatası yok
 - [ ] Supabase panelinde **Advisors** uyarısı yok (RLS kontrolü)

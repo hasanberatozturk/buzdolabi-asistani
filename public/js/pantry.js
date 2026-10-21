@@ -3,6 +3,9 @@ import { clear, el } from "./dom.js";
 
 const SEARCH_DELAY_MS = 250;
 
+// Sunucudaki normalize() ile aynı kural (app/utils/text.py): İ/I/ı → i, küçük harf, tek boşluk.
+const fold = (text) => text.trim().replace(/[İIı]/g, "i").toLowerCase().replace(/\s+/g, " ");
+
 export function initPantry({ onChange }) {
   const input = document.querySelector("#ingredient-search");
   const results = document.querySelector("#search-results");
@@ -81,8 +84,8 @@ export function initPantry({ onChange }) {
       const options = found
         .filter((ingredient) => !inPantry.has(ingredient.id))
         .map((ingredient) => ({ label: ingredient.name, action: () => add(ingredient.id) }));
-      const lower = query.toLocaleLowerCase("tr");
-      if (!found.some((ingredient) => ingredient.name.toLocaleLowerCase("tr") === lower)) {
+      const key = fold(query);
+      if (!found.some((ingredient) => fold(ingredient.name) === key)) {
         options.push({ label: `➕ “${query}” malzemesini yeni ekle`, action: () => createAndAdd(query) });
       }
       showResults(options);

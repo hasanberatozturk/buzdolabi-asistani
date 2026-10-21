@@ -59,6 +59,15 @@ def test_adding_without_ingredient_id_returns_422(client):
     assert http.post("/api/pantry", json={}).status_code == 422
 
 
+def test_out_of_range_ids_are_rejected_not_500(client):
+    http, _ = client
+    huge = 99999999999999999999
+
+    assert http.post("/api/pantry", json={"ingredient_id": huge}).status_code == 422
+    assert http.post("/api/pantry", json={"ingredient_id": 0}).status_code == 422
+    assert http.delete(f"/api/pantry/{huge}").status_code == 422
+
+
 def test_remove_item_from_pantry(client):
     http, db = client
     egg = make_ingredient(db, "Yumurta")
