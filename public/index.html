@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Buzdolabı Asistanı</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>🥕 Buzdolabı Asistanı</h1>
+      <p class="muted">Elindeki malzemeleri ekle, yapabileceğin tarifleri gör.</p>
+    </header>
+
+    <main>
+      <section aria-labelledby="pantry-title">
+        <h2 id="pantry-title">Buzdolabım</h2>
+        <div class="search">
+          <label class="visually-hidden" for="ingredient-search">Malzeme ara</label>
+          <input
+            id="ingredient-search"
+            type="search"
+            placeholder="Malzeme ara (ör. domates)"
+            autocomplete="off"
+            maxlength="100"
+          />
+          <ul id="search-results" class="results" hidden></ul>
+        </div>
+        <div id="pantry-chips" class="chips"></div>
+        <p id="pantry-status" class="status" role="status" aria-live="polite"></p>
+        <button id="clear-pantry" type="button" class="link-button" hidden>Buzdolabını boşalt</button>
+      </section>
+
+      <section aria-labelledby="recipes-title">
+        <div class="section-head">
+          <h2 id="recipes-title">Önerilen tarifler</h2>
+          <label class="switch">
+            <input id="only-ready" type="checkbox" />
+            Sadece hemen yapılabilenler
+          </label>
+        </div>
+        <p id="recipe-status" class="status" role="status" aria-live="polite"></p>
+        <div id="recipe-list" class="cards"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { initPantry } from "/js/pantry.js";
+      import { initRecipes } from "/js/recipes.js";
+
+      const recipes = initRecipes();
+      const pantry = initPantry({ onChange: (items) => recipes.update(items.length) });
+      pantry.load();
+    </script>
+  </body>
+</html>
