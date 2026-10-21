@@ -100,6 +100,19 @@ function numberOrNull(value) {
   return value === "" ? null : Number(value);
 }
 
+// Adı boş ama başka alanı dolu (miktar, birim, "isteğe bağlı") ilk satırı döndürür.
+// Böyle bir satır sessizce atılırsa tarif o malzeme olmadan kaydedilirdi.
+function findNamelessRow() {
+  return [...rows.querySelectorAll(".ingredient-row")].find((row) => {
+    const hasName = row.querySelector(".ing-name").value.trim() !== "";
+    const hasOther =
+      row.querySelector(".ing-quantity").value !== "" ||
+      row.querySelector(".ing-unit").value.trim() !== "" ||
+      row.querySelector(".ing-optional").checked;
+    return !hasName && hasOther;
+  });
+}
+
 function collect() {
   const ingredients = [...rows.querySelectorAll(".ingredient-row")]
     .map((row) => ({
@@ -140,6 +153,12 @@ function fill(recipe) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   errorBox.textContent = "";
+  const nameless = findNamelessRow();
+  if (nameless) {
+    errorBox.textContent = "Miktar, birim veya “isteğe bağlı” işaretlediğin bir satırın malzeme adı boş.";
+    nameless.querySelector(".ing-name").focus();
+    return;
+  }
   const data = collect();
   const problem = validate(data);
   if (problem) {

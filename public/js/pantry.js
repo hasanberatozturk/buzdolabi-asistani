@@ -134,9 +134,14 @@ export function initPantry({ onChange }) {
     }
   }
 
+  // Hızlı art arda eklemede iki yükleme yarışır; yavaş dönen eski yanıt yenisini ezmesin.
+  let reloadSeq = 0;
   async function reload() {
+    const seq = ++reloadSeq;
     setStatus("");
-    items = await api.getPantry();
+    const latest = await api.getPantry();
+    if (seq !== reloadSeq) return;
+    items = latest;
     renderChips();
     onChange(items);
   }
