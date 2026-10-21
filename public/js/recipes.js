@@ -21,6 +21,9 @@ export function initRecipes() {
 
   function renderCard(match) {
     const percent = Math.round(match.match_ratio * 100);
+    // CSP (style-src 'self') satır içi style özniteliğini engeller; CSSOM ile ayarlanır.
+    const fill = el("div", { class: "bar-fill" });
+    fill.style.width = `${percent}%`;
     return el(
       "article",
       { class: "card" },
@@ -29,7 +32,7 @@ export function initRecipes() {
       el(
         "div",
         { class: "bar", role: "img", "aria-label": `%${percent} eşleşme` },
-        el("div", { class: "bar-fill", style: `width: ${percent}%` }),
+        fill,
       ),
       el(
         "p",

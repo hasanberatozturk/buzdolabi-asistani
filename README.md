@@ -75,8 +75,11 @@ buzdolabi-asistani/
 │   │   └── style.css
 │   └── js/
 │       ├── api.js           # Tüm fetch çağrıları tek yerde
+│       ├── dom.js           # Güvenli DOM oluşturma yardımcısı (innerHTML yok)
+│       ├── home.js          # Ana sayfa girişi (satır içi script yasak, bkz. bölüm 8)
 │       ├── pantry.js
 │       ├── recipes.js
+│       ├── recipe.js        # Tarif detay sayfası
 │       └── recipe-form.js
 ├── migrations/              # Alembic migration dosyaları
 │   ├── env.py
@@ -92,6 +95,7 @@ buzdolabi-asistani/
 ├── requirements-dev.txt     # Test / geliştirme paketleri
 ├── .env.example
 ├── .gitignore
+├── vercel.json              # Güvenlik başlıkları (CSP vb.)
 ├── .vercelignore
 └── README.md
 ```
@@ -300,6 +304,16 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 - Dinamik malzeme satırları (malzeme + miktar + birim + opsiyonel kutusu)
 - Adımlar için metin alanı
 
+### Güvenlik başlıkları ve CSP (`vercel.json`)
+Tüm yollara `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` ve `Permissions-Policy` eklenir. HTML/JS/CSS yanıtlarına ayrıca şu CSP uygulanır (`/api/*`, `/docs`, `/redoc`, `/openapi.json` hariç, çünkü Swagger arayüzü CDN ve satır içi betik kullanır):
+
+```
+default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+Bu yüzden frontend'de **satır içi `<script>`, `<style>`, `style=` / `on…=` öznitelikleri ve `setAttribute("style", …)` kullanılmaz**; genişlik gibi dinamik stiller `el.style.width = …` ile (CSSOM) verilir. `tests/test_frontend_csp.py` bunları denetler. Dışarıdan görsel (`image_url`) gösterilecekse `img-src`'ye ilgili alan adı eklenmelidir. HSTS'yi Vercel kendisi ekler.
+
 **Tasarım:** Mobil öncelikli, CSS değişkenleriyle tema renkleri, açık/koyu mod desteği.
 **Kullanıcı deneyimi:** Sunucusuz fonksiyonlarda ilk istek (soğuk başlatma) biraz gecikebilir; bu yüzden listelerde yükleniyor göstergesi (skeleton) kullanılır.
 
@@ -418,6 +432,7 @@ __pycache__/
 - [ ] Malzeme arama Türkçe karakterlerle çalışıyor ("ıspanak", "ispanak" ve "İrmik" aynı sonucu bulmalı)
 - [ ] Tarif ekle → sayfayı yenile → tarif hâlâ orada (veri Supabase'e yazılıyor)
 - [ ] Vercel loglarında "prepared statement" veya bağlantı hatası yok
+- [ ] Yanıt başlıkları: ana sayfada `Content-Security-Policy` var, `/api/health` yanıtında CSP yok; tarayıcı konsolunda CSP ihlali yok (`vercel.json` kuralı Vercel'de de aynı çalışıyor mu)
 - [ ] Supabase panelinde **Advisors** uyarısı yok (RLS kontrolü)
 
 ---
