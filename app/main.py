@@ -3,8 +3,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.routers import ingredients, pantry
 
 app = FastAPI(title="Buzdolabı Asistanı")
+app.include_router(ingredients.router)
+app.include_router(pantry.router)
 
 
 @app.get("/api/health")
