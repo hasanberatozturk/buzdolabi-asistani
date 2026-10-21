@@ -1,0 +1,110 @@
+[
+  {
+    "title": "Menemen",
+    "description": "Klasik Türk kahvaltısı.",
+    "prep_minutes": 15,
+    "servings": 2,
+    "ingredients": [
+      { "name": "Yumurta", "quantity": 3, "unit": "adet" },
+      { "name": "Domates", "quantity": 2, "unit": "adet" },
+      { "name": "Sivri biber", "quantity": 2, "unit": "adet" },
+      { "name": "Tereyağı", "quantity": 1, "unit": "yemek kaşığı" },
+      { "name": "Soğan", "quantity": 1, "unit": "adet", "is_optional": true }
+    ],
+    "instructions": "Biberleri tereyağında kavur.\nDomatesleri ekleyip suyunu çekene kadar pişir.\nYumurtaları kırıp karıştır, tuzunu ekle."
+  },
+  {
+    "title": "Mercimek Çorbası",
+    "description": "Kışın vazgeçilmezi, sade ve doyurucu.",
+    "prep_minutes": 35,
+    "servings": 4,
+    "ingredients": [
+      { "name": "Kırmızı mercimek", "quantity": 1, "unit": "su bardağı" },
+      { "name": "Soğan", "quantity": 1, "unit": "adet" },
+      { "name": "Havuç", "quantity": 1, "unit": "adet" },
+      { "name": "Patates", "quantity": 1, "unit": "adet" },
+      { "name": "Tereyağı", "quantity": 1, "unit": "yemek kaşığı" },
+      { "name": "Limon", "quantity": 1, "unit": "adet", "is_optional": true }
+    ],
+    "instructions": "Soğanı tereyağında kavur.\nDoğranmış havuç ve patatesi ekle.\nYıkanmış mercimeği ve 6 bardak su ekleyip sebzeler yumuşayana kadar pişir.\nBlenderdan geçir, tuzunu ayarla. İstersen limon sıkarak servis et."
+  },
+  {
+    "title": "Omlet",
+    "description": "Beş dakikada hazır.",
+    "prep_minutes": 5,
+    "servings": 1,
+    "ingredients": [
+      { "name": "Yumurta", "quantity": 2, "unit": "adet" },
+      { "name": "Süt", "quantity": 2, "unit": "yemek kaşığı" },
+      { "name": "Tereyağı", "quantity": 1, "unit": "tatlı kaşığı" },
+      { "name": "Kaşar peyniri", "quantity": 2, "unit": "yemek kaşığı", "is_optional": true }
+    ],
+    "instructions": "Yumurta ve sütü çırp.\nTavada tereyağını eritip karışımı dök.\nİstersen üzerine kaşar ekle, ikiye katlayıp servis et."
+  },
+  {
+    "title": "Makarna",
+    "description": "Domates soslu basit makarna.",
+    "prep_minutes": 20,
+    "servings": 2,
+    "ingredients": [
+      { "name": "Makarna", "quantity": 200, "unit": "gram" },
+      { "name": "Domates", "quantity": 3, "unit": "adet" },
+      { "name": "Sarımsak", "quantity": 2, "unit": "diş" },
+      { "name": "Zeytinyağı", "quantity": 2, "unit": "yemek kaşığı" },
+      { "name": "Fesleğen", "quantity": 1, "unit": "dal", "is_optional": true }
+    ],
+    "instructions": "Makarnayı tuzlu suda haşla.\nZeytinyağında sarımsağı kavur, rendelenmiş domatesi ekleyip sos kıvam alana kadar pişir.\nMakarnayı sosla karıştır."
+  },
+  {
+    "title": "Pilav",
+    "description": "Tane tane tereyağlı pirinç pilavı.",
+    "prep_minutes": 25,
+    "servings": 4,
+    "ingredients": [
+      { "name": "Pirinç", "quantity": 2, "unit": "su bardağı" },
+      { "name": "Tereyağı", "quantity": 2, "unit": "yemek kaşığı" },
+      { "name": "Su", "quantity": 3, "unit": "su bardağı" }
+    ],
+    "instructions": "Pirinci ılık tuzlu suda bekletip yıka.\nTereyağında kısaca kavur.\nSıcak suyu ekle, kısık ateşte suyunu çekene kadar pişir.\n10 dakika demlendir."
+  },
+  {
+    "title": "Ispanaklı Yumurta",
+    "description": "Hafif ve hızlı bir akşam yemeği.",
+    "prep_minutes": 15,
+    "servings": 2,
+    "ingredients": [
+      { "name": "Ispanak", "quantity": 300, "unit": "gram" },
+      { "name": "Yumurta", "quantity": 2, "unit": "adet" },
+      { "name": "Soğan", "quantity": 1, "unit": "adet" },
+      { "name": "Zeytinyağı", "quantity": 2, "unit": "yemek kaşığı" }
+    ],
+    "instructions": "Soğanı zeytinyağında kavur.\nDoğranmış ıspanağı ekleyip suyunu çekene kadar pişir.\nYumurtaları kırıp kapağı kapat, beyazı tutana kadar pişir."
+  },
+  {
+    "title": "İrmik Helvası",
+    "description": "Ev yapımı klasik tatlı.",
+    "prep_minutes": 25,
+    "servings": 6,
+    "ingredients": [
+      { "name": "İrmik", "quantity": 1, "unit": "su bardağı" },
+      { "name": "Tereyağı", "quantity": 4, "unit": "yemek kaşığı" },
+      { "name": "Şeker", "quantity": 0.75, "unit": "su bardağı" },
+      { "name": "Süt", "quantity": 2, "unit": "su bardağı" },
+      { "name": "Çam fıstığı", "quantity": 1, "unit": "yemek kaşığı", "is_optional": true }
+    ],
+    "instructions": "Tereyağında irmiği pembeleşene kadar kavur.\nSüt ve şekeri ayrı ısıtıp irmiğin üzerine ekle.\nSuyunu çekene kadar karıştır, kapağı kapatıp demlendir."
+  },
+  {
+    "title": "Cacık",
+    "description": "Yaz sofrasının serinletici mezesi.",
+    "prep_minutes": 10,
+    "servings": 4,
+    "ingredients": [
+      { "name": "Yoğurt", "quantity": 2, "unit": "su bardağı" },
+      { "name": "Salatalık", "quantity": 2, "unit": "adet" },
+      { "name": "Sarımsak", "quantity": 1, "unit": "diş" },
+      { "name": "Nane", "quantity": 1, "unit": "tatlı kaşığı", "is_optional": true }
+    ],
+    "instructions": "Salatalıkları rendele.\nYoğurt, ezilmiş sarımsak ve tuzla karıştır.\nİstersen nane ekleyip soğuk servis et."
+  }
+]
