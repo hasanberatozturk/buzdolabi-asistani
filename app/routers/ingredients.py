@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Ingredient
 from app.schemas import IngredientCreate, IngredientOut
+from app.security import require_api_key
 from app.utils.text import normalize
 
 router = APIRouter(prefix="/api/ingredients", tags=["ingredients"])
@@ -22,7 +23,9 @@ def search_ingredients(q: str = "", db: Session = Depends(get_db)) -> list[Ingre
     return list(db.scalars(stmt))
 
 
-@router.post("", response_model=IngredientOut, status_code=201)
+@router.post(
+    "", response_model=IngredientOut, status_code=201, dependencies=[Depends(require_api_key)]
+)
 def create_ingredient(payload: IngredientCreate, db: Session = Depends(get_db)) -> Ingredient:
     name = " ".join(payload.name.split())
     normalized = normalize(name)

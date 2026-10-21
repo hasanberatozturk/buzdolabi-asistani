@@ -12,6 +12,7 @@ from app.schemas import (
     RecipeMatchOut,
     RecipePage,
 )
+from app.security import require_api_key
 from app.services.ingredients import get_or_create_ingredient
 from app.services.matching import (
     STAPLE_INGREDIENTS,
@@ -112,7 +113,9 @@ def _apply_fields(recipe: Recipe, payload: RecipeIn) -> None:
     recipe.image_url = payload.image_url
 
 
-@router.post("", response_model=RecipeDetail, status_code=201)
+@router.post(
+    "", response_model=RecipeDetail, status_code=201, dependencies=[Depends(require_api_key)]
+)
 def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDetail:
     recipe = Recipe()
     _apply_fields(recipe, payload)
@@ -122,7 +125,9 @@ def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDet
     return _to_detail(db, _load_recipe(db, recipe.id))
 
 
-@router.put("/{recipe_id}", response_model=RecipeDetail)
+@router.put(
+    "/{recipe_id}", response_model=RecipeDetail, dependencies=[Depends(require_api_key)]
+)
 def update_recipe(
     recipe_id: int, payload: RecipeIn, db: Session = Depends(get_db)
 ) -> RecipeDetail:
@@ -133,7 +138,7 @@ def update_recipe(
     return _to_detail(db, _load_recipe(db, recipe_id))
 
 
-@router.delete("/{recipe_id}", status_code=204)
+@router.delete("/{recipe_id}", status_code=204, dependencies=[Depends(require_api_key)])
 def delete_recipe(recipe_id: int, db: Session = Depends(get_db)) -> Response:
     db.delete(_load_recipe(db, recipe_id))
     db.commit()

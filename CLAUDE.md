@@ -66,6 +66,7 @@ tests/
 ### Güvenlik ve gizli bilgiler
 - Şifre, bağlantı dizesi veya anahtarı koda, migration'a, teste ya da commit'e yazma. Her şey ortam değişkeninden okunur (`.env` yerelde, Vercel panelinde yayında).
 - `.env` ve `*.db` dosyaları Git'e girmez.
+- Her yazma uç noktası (`POST`/`PUT`/`DELETE`) `dependencies=[Depends(require_api_key)]` ile korunur (`app/security.py`). `ADMIN_KEY` ortam değişkenidir; koda yazılmaz, frontend'e gömülmez.
 - Tüm SQL, SQLAlchemy üzerinden parametreli çalışır; string birleştirerek sorgu kurma.
 - Kullanıcıdan gelen metni frontend'de `innerHTML` ile basma; `textContent` veya güvenli DOM oluşturma kullan.
 

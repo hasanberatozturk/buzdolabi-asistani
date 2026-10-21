@@ -4,9 +4,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import config
 from app.database import get_db
 from app.main import app
 from app.models import Base
+
+
+@pytest.fixture(autouse=True)
+def no_admin_key(monkeypatch):
+    """Testler geliştiricinin .env dosyasındaki ADMIN_KEY'den etkilenmesin."""
+    monkeypatch.setattr(config, "ADMIN_KEY", None)
+    monkeypatch.setattr(config, "IS_VERCEL", False)
 
 
 @pytest.fixture

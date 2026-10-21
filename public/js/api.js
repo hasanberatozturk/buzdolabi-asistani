@@ -1,11 +1,48 @@
 // Tüm fetch çağrıları sadece bu dosyada; diğer dosyalar bu fonksiyonları kullanır.
 
-async function request(path, options = {}) {
+// Yazma istekleri sunucuda ADMIN_KEY ile korunur. Anahtar koda gömülmez: sunucu 401
+// dönünce bir kez sorulur ve bu tarayıcının localStorage'ında saklanır.
+const KEY_STORAGE = "adminKey";
+
+function readKey() {
+  try {
+    return localStorage.getItem(KEY_STORAGE);
+  } catch {
+    return null;
+  }
+}
+
+function writeKey(key) {
+  try {
+    if (key) localStorage.setItem(KEY_STORAGE, key);
+    else localStorage.removeItem(KEY_STORAGE);
+  } catch {
+    // Depolama kapalıysa anahtar her seferinde sorulur
+  }
+}
+
+async function request(path, options = {}, askedForKey = false) {
+  const isWrite = (options.method ?? "GET") !== "GET";
+  const headers = { ...options.headers };
+  const sentKey = isWrite ? readKey() : null;
+  if (sentKey) headers["X-API-Key"] = sentKey;
+
   let response;
   try {
-    response = await fetch(path, options);
+    response = await fetch(path, { ...options, headers });
   } catch {
     throw new Error("Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.");
+  }
+
+  if (response.status === 401 && isWrite) {
+    writeKey(null);
+    const wrong = Boolean(sentKey) || askedForKey;
+    const key = window.prompt(wrong ? "Anahtar geçersiz. Yönetici anahtarını yeniden gir:" : "Bu işlem için yönetici anahtarı gerekli:");
+    if (key && key.trim()) {
+      writeKey(key.trim());
+      return request(path, options, true);
+    }
+    throw new Error("Bu işlem için yönetici anahtarı gerekli.");
   }
   if (response.status === 204) return null;
 

@@ -164,6 +164,14 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 | DELETE | `/api/recipes/{id}` | Tarif sil (malzeme satırları da silinir, malzeme kataloğu korunur) |
 | GET | `/api/recipes/match?max_missing=2` | Buzdolabındaki malzemelere göre eşleşen tarifler |
 
+### Yazma koruması (`ADMIN_KEY`)
+Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/`PUT`/`DELETE`: tarifler, malzeme ekleme, buzdolabı) `X-API-Key` başlığında `ADMIN_KEY` değerini ister; yanlış veya eksikse **401** döner. Okuma uç noktaları (`GET`) herkese açıktır.
+
+- `ADMIN_KEY` tanımsızsa: yerelde koruma kapalıdır, Vercel'de yazma istekleri **503** döner (anahtarsız yayına çıkılamaz).
+- Kontrol `app/security.py` içindeki `require_api_key` bağımlılığıyla yapılır; yeni bir yazma uç noktası eklerken `dependencies=[Depends(require_api_key)]` eklenmelidir.
+- Frontend anahtarı koda gömmez: sunucu 401 dönünce `api.js` bir kez sorar ve o tarayıcının `localStorage`'ında saklar. Yanlış anahtar girilirse yeniden sorulur.
+- Sınırlar: tek paylaşılan anahtardır, hız sınırı yoktur; bu yüzden uzun ve rastgele olmalıdır. Hesaplı çok kullanıcılı yapı için Supabase Auth gerekir (sonraki adımlar).
+
 ### Sağlık kontrolü
 | Metot | Yol | Açıklama |
 |---|---|---|
@@ -395,7 +403,7 @@ __pycache__/
 ### Vercel
 1. Projeyi GitHub'a gönder.
 2. Vercel'de **Add New → Project** ile repoyu içe aktar; FastAPI otomatik algılanır.
-3. **Environment Variables:** `DATABASE_URL` = transaction pooler dizesi.
+3. **Environment Variables:** `DATABASE_URL` = transaction pooler dizesi, `ADMIN_KEY` = uzun rastgele anahtar (bkz. `.env.example`).
 4. Fonksiyon bölgesini Supabase'e yakın seç (ör. Frankfurt, `fra1`).
 5. Deploy. Sonraki her `git push` otomatik yeni sürüm yayınlar.
 

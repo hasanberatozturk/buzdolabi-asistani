@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.models import Ingredient, PantryItem
 from app.schemas import PantryAdd, PantryItemOut
+from app.security import require_api_key
 
 router = APIRouter(prefix="/api/pantry", tags=["pantry"])
 
@@ -20,7 +21,9 @@ def list_pantry(db: Session = Depends(get_db)) -> list[PantryItem]:
     return list(db.scalars(stmt))
 
 
-@router.post("", response_model=PantryItemOut, status_code=201)
+@router.post(
+    "", response_model=PantryItemOut, status_code=201, dependencies=[Depends(require_api_key)]
+)
 def add_to_pantry(payload: PantryAdd, db: Session = Depends(get_db)) -> PantryItem:
     if db.get(Ingredient, payload.ingredient_id) is None:
         raise HTTPException(status_code=404, detail="Malzeme bulunamadı.")
@@ -38,7 +41,7 @@ def add_to_pantry(payload: PantryAdd, db: Session = Depends(get_db)) -> PantryIt
     return item
 
 
-@router.delete("/{item_id}", status_code=204)
+@router.delete("/{item_id}", status_code=204, dependencies=[Depends(require_api_key)])
 def remove_from_pantry(item_id: int, db: Session = Depends(get_db)) -> Response:
     item = db.get(PantryItem, item_id)
     if item is None:
@@ -48,7 +51,7 @@ def remove_from_pantry(item_id: int, db: Session = Depends(get_db)) -> Response:
     return Response(status_code=204)
 
 
-@router.delete("", status_code=204)
+@router.delete("", status_code=204, dependencies=[Depends(require_api_key)])
 def clear_pantry(db: Session = Depends(get_db)) -> Response:
     db.execute(delete(PantryItem))
     db.commit()
