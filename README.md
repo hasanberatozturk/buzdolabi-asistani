@@ -200,7 +200,9 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 
 **Performans notu:** Tarifler ve malzemeleri tek sorguda (`selectinload`) çekilir; her tarif için ayrı sorgu atılmaz. Sunucusuz ortamda her veritabanı gidiş-dönüşü Supabase'e ağ üzerinden gittiği için bu önemlidir.
 
-**Temel malzemeler:** Tuz, su, karabiber gibi neredeyse herkeste olan malzemeler için bir "her zaman var say" listesi tutulabilir; böylece "tuz eksik" diye tarif elenmez.
+**Temel malzemeler:** Tuz, su, karabiber gibi neredeyse herkeste olan malzemeler `STAPLE_INGREDIENTS` (`app/services/matching.py`, normalize edilmiş adlarla) listesinde tutulur. Eşleştirmede yok sayılırlar: ne "var" ne "eksik" listesine girerler, orana da katılmazlar; böylece "tuz eksik" diye tarif elenmez.
+
+**Ek kurallar:** Zorunlu malzemesi olmayan tarifler ve buzdolabındaki hiçbir malzemeyi içermeyen tarifler listelenmez; buzdolabı boşsa sonuç boştur.
 
 **Türkçe normalizasyon (`app/utils/text.py`):**
 Python'da `"İ".lower()` sonucu `"i̇"` (noktalı birleşik karakter) olur ve aramaları bozar. Bu yüzden küçük harfe çevirmeden önce `İ → i` ve `I → ı` dönüşümleri elle yapılmalı, ardından boşluklar temizlenmeli:

@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.models import PantryItem, Recipe, RecipeIngredient
 from app.schemas import RecipeMatchOut
-from app.services.matching import MatchResult, RecipeCandidate, match_recipes
+from app.services.matching import (
+    STAPLE_INGREDIENTS,
+    MatchResult,
+    RecipeCandidate,
+    match_recipes,
+)
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -33,7 +38,7 @@ def match(
             required=tuple(
                 (row.ingredient_id, row.ingredient.name)
                 for row in sorted(recipe.ingredients, key=lambda r: r.id)
-                if not row.is_optional
+                if not row.is_optional and row.ingredient.normalized not in STAPLE_INGREDIENTS
             ),
         )
         for recipe in recipes

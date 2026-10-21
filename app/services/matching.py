@@ -2,6 +2,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 
+# Neredeyse herkeste bulunan malzemeler (normalize edilmiş adlar). Eşleştirmede
+# yok sayılır: ne "var" ne "eksik" listesine girer, orana da katılmaz.
+STAPLE_INGREDIENTS: frozenset[str] = frozenset({"su", "tuz", "karabiber"})
+
+
 @dataclass(frozen=True)
 class RecipeCandidate:
     """Eşleştirme için gereken en az bilgi; veritabanından bağımsızdır."""

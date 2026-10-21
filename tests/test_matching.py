@@ -107,6 +107,22 @@ def test_match_endpoint_ignores_optional_ingredients(client):
     assert item["missing"] == []
 
 
+def test_match_endpoint_treats_staples_as_always_available(client):
+    http, db = client
+    rice = Ingredient(name="Pirinç", normalized="pirinç")
+    water = Ingredient(name="Su", normalized="su")
+    recipe = Recipe(title="Pilav", instructions="Pişir.", prep_minutes=25)
+    recipe.ingredients = [RecipeIngredient(ingredient=rice), RecipeIngredient(ingredient=water)]
+    db.add_all([recipe, PantryItem(ingredient=rice)])
+    db.commit()
+
+    [item] = http.get("/api/recipes/match", params={"max_missing": 0}).json()
+
+    assert item["match_ratio"] == 1.0
+    assert item["have"] == ["Pirinç"]
+    assert item["missing"] == []
+
+
 def test_match_endpoint_returns_empty_list_for_empty_pantry(client):
     http, _ = client
     assert http.get("/api/recipes/match").json() == []
