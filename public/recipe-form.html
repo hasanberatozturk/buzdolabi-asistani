@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Tarif · Buzdolabı Asistanı</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="back-link" href="/">← Ana sayfa</a>
+    </header>
+
+    <main>
+      <h2 id="form-title">Yeni tarif</h2>
+      <p id="form-status" class="status" role="status" aria-live="polite"></p>
+
+      <form id="recipe-form" class="form" novalidate hidden>
+        <label class="field">
+          <span>Başlık</span>
+          <input id="title" type="text" required maxlength="200" />
+        </label>
+
+        <label class="field">
+          <span>Açıklama</span>
+          <textarea id="description" rows="2"></textarea>
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Süre (dk)</span>
+            <input id="prep-minutes" type="number" min="0" max="10000" step="1" inputmode="numeric" />
+          </label>
+          <label class="field">
+            <span>Porsiyon</span>
+            <input id="servings" type="number" min="1" max="1000" step="1" inputmode="numeric" />
+          </label>
+        </div>
+
+        <fieldset class="field">
+          <legend>Malzemeler</legend>
+          <div id="ingredient-rows" class="ingredient-rows"></div>
+          <datalist id="ingredient-suggestions"></datalist>
+          <button id="add-ingredient" type="button" class="secondary">+ Malzeme ekle</button>
+        </fieldset>
+
+        <label class="field">
+          <span>Yapılışı <small class="muted">(her satır bir adım)</small></span>
+          <textarea id="instructions" rows="6" required></textarea>
+        </label>
+
+        <p id="form-error" class="status error" role="alert"></p>
+
+        <div class="actions">
+          <button id="submit" type="submit" class="primary">Kaydet</button>
+          <a id="cancel" class="button secondary" href="/">Vazgeç</a>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="/js/recipe-form.js"></script>
+  </body>
+</html>

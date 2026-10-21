@@ -16,18 +16,24 @@ async function request(path, options = {}) {
     // JSON olmayan yanıt: aşağıda genel hata mesajı verilir
   }
   if (!response.ok) {
-    const detail = body && typeof body.detail === "string" ? body.detail : null;
-    throw new Error(detail ?? "Bir şeyler ters gitti. Lütfen tekrar dene.");
+    let message = "Bir şeyler ters gitti. Lütfen tekrar dene.";
+    if (body && typeof body.detail === "string") message = body.detail;
+    else if (response.status === 422) message = "Girdiğin bilgilerde bir sorun var. Alanları kontrol edip tekrar dene.";
+    throw new Error(message);
   }
   return body;
 }
 
-function postJson(path, data) {
+function sendJson(method, path, data) {
   return request(path, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+}
+
+function postJson(path, data) {
+  return sendJson("POST", path, data);
 }
 
 export function searchIngredients(q) {
@@ -56,6 +62,18 @@ export function clearPantry() {
 
 export function getRecipe(id) {
   return request(`/api/recipes/${id}`);
+}
+
+export function createRecipe(data) {
+  return postJson("/api/recipes", data);
+}
+
+export function updateRecipe(id, data) {
+  return sendJson("PUT", `/api/recipes/${id}`, data);
+}
+
+export function deleteRecipe(id) {
+  return request(`/api/recipes/${id}`, { method: "DELETE" });
 }
 
 export function matchRecipes(maxMissing) {

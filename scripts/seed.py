@@ -14,20 +14,10 @@ from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.database import SessionLocal  # noqa: E402
-from app.models import Ingredient, Recipe, RecipeIngredient  # noqa: E402
-from app.utils.text import normalize  # noqa: E402
+from app.models import Recipe, RecipeIngredient  # noqa: E402
+from app.services.ingredients import get_or_create_ingredient  # noqa: E402
 
 SEED_FILE = ROOT / "data" / "seed_recipes.json"
-
-
-def get_or_create_ingredient(db: Session, name: str) -> Ingredient:
-    normalized = normalize(name)
-    ingredient = db.scalar(select(Ingredient).where(Ingredient.normalized == normalized))
-    if ingredient is None:
-        ingredient = Ingredient(name=name.strip(), normalized=normalized)
-        db.add(ingredient)
-        db.flush()
-    return ingredient
 
 
 def seed(db: Session) -> tuple[int, int]:

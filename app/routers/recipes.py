@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -6,17 +6,20 @@ from app.database import get_db
 from app.models import PantryItem, Recipe, RecipeIngredient
 from app.schemas import (
     RecipeDetail,
+    RecipeIn,
     RecipeIngredientOut,
     RecipeListItem,
     RecipeMatchOut,
     RecipePage,
 )
+from app.services.ingredients import get_or_create_ingredient
 from app.services.matching import (
     STAPLE_INGREDIENTS,
     MatchResult,
     RecipeCandidate,
     match_recipes,
 )
+from app.utils.text import normalize
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -68,8 +71,7 @@ def match(
     return match_recipes(candidates, pantry_ids, max_missing)
 
 
-@router.get("/{recipe_id}", response_model=RecipeDetail)
-def get_recipe(recipe_id: int, db: Session = Depends(get_db)) -> RecipeDetail:
+def _load_recipe(db: Session, recipe_id: int) -> Recipe:
     recipe = db.scalar(
         select(Recipe)
         .where(Recipe.id == recipe_id)
@@ -77,7 +79,73 @@ def get_recipe(recipe_id: int, db: Session = Depends(get_db)) -> RecipeDetail:
     )
     if recipe is None:
         raise HTTPException(status_code=404, detail="Tarif bulunamadı.")
+    return recipe
 
+
+def _build_ingredients(db: Session, payload: RecipeIn) -> list[RecipeIngredient]:
+    rows: list[RecipeIngredient] = []
+    seen: set[str] = set()
+    for item in payload.ingredients:
+        normalized = normalize(item.name)
+        if normalized in seen:
+            raise HTTPException(
+                status_code=400, detail=f"“{item.name}” malzemesi birden fazla kez eklenmiş."
+            )
+        seen.add(normalized)
+        rows.append(
+            RecipeIngredient(
+                ingredient=get_or_create_ingredient(db, item.name),
+                quantity=item.quantity,
+                unit=item.unit,
+                is_optional=item.is_optional,
+            )
+        )
+    return rows
+
+
+def _apply_fields(recipe: Recipe, payload: RecipeIn) -> None:
+    recipe.title = payload.title
+    recipe.description = payload.description
+    recipe.instructions = payload.instructions
+    recipe.prep_minutes = payload.prep_minutes
+    recipe.servings = payload.servings
+    recipe.image_url = payload.image_url
+
+
+@router.post("", response_model=RecipeDetail, status_code=201)
+def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDetail:
+    recipe = Recipe()
+    _apply_fields(recipe, payload)
+    recipe.ingredients = _build_ingredients(db, payload)
+    db.add(recipe)
+    db.commit()
+    return _to_detail(db, _load_recipe(db, recipe.id))
+
+
+@router.put("/{recipe_id}", response_model=RecipeDetail)
+def update_recipe(
+    recipe_id: int, payload: RecipeIn, db: Session = Depends(get_db)
+) -> RecipeDetail:
+    recipe = _load_recipe(db, recipe_id)
+    _apply_fields(recipe, payload)
+    recipe.ingredients = _build_ingredients(db, payload)  # eskiler delete-orphan ile silinir
+    db.commit()
+    return _to_detail(db, _load_recipe(db, recipe_id))
+
+
+@router.delete("/{recipe_id}", status_code=204)
+def delete_recipe(recipe_id: int, db: Session = Depends(get_db)) -> Response:
+    db.delete(_load_recipe(db, recipe_id))
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.get("/{recipe_id}", response_model=RecipeDetail)
+def get_recipe(recipe_id: int, db: Session = Depends(get_db)) -> RecipeDetail:
+    return _to_detail(db, _load_recipe(db, recipe_id))
+
+
+def _to_detail(db: Session, recipe: Recipe) -> RecipeDetail:
     pantry_ids = set(db.scalars(select(PantryItem.ingredient_id)))
     return RecipeDetail(
         id=recipe.id,

@@ -52,7 +52,7 @@ function renderRecipe(recipe) {
         .filter(Boolean)
         .join(" · "),
     ),
-    recipe.description && el("p", {}, recipe.description),
+    ...(recipe.description ? [el("p", {}, recipe.description)] : []),
 
     el("h3", {}, "Malzemeler"),
     el(
@@ -64,7 +64,29 @@ function renderRecipe(recipe) {
 
     el("h3", {}, "Yapılışı"),
     el("ol", { class: "steps" }, steps.map((step) => el("li", {}, step))),
+
+    el(
+      "div",
+      { class: "actions" },
+      el("a", { class: "button secondary", href: `/recipe-form.html?id=${recipe.id}` }, "Düzenle"),
+      el("button", { type: "button", class: "danger", onclick: (e) => remove(recipe, e.currentTarget) }, "Sil"),
+    ),
+    el("p", { id: "action-error", class: "status error", role: "alert" }),
   );
+}
+
+async function remove(recipe, button) {
+  if (!confirm(`“${recipe.title}” tarifini silmek istediğine emin misin? Bu işlem geri alınamaz.`)) return;
+  const errorBox = document.querySelector("#action-error");
+  errorBox.textContent = "";
+  button.disabled = true;
+  try {
+    await api.deleteRecipe(recipe.id);
+    location.href = "/";
+  } catch (error) {
+    errorBox.textContent = error.message;
+    button.disabled = false;
+  }
 }
 
 async function load() {
