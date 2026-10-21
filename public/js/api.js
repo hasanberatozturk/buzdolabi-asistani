@@ -54,6 +54,10 @@ export function clearPantry() {
   return request("/api/pantry", { method: "DELETE" });
 }
 
+export function getRecipe(id) {
+  return request(`/api/recipes/${id}`);
+}
+
 export function matchRecipes(maxMissing) {
   return request(`/api/recipes/match?max_missing=${maxMissing}`);
 }

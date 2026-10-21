@@ -273,6 +273,56 @@ a:focus-visible {
   color: var(--ok);
 }
 
+/* Tarif detay */
+.back-link {
+  display: inline-block;
+  padding: 0.5rem 0;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.recipe-title {
+  margin: 0.5rem 0 0;
+  font-size: 1.6rem;
+}
+
+#recipe h3 {
+  margin: calc(var(--space) * 1.5) 0 0.5rem;
+}
+
+.ingredient-list,
+.steps {
+  margin: 0;
+  padding: 0;
+}
+
+.ingredient-list {
+  list-style: none;
+}
+
+.ingredient-list li {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ingredient-list .lack {
+  color: var(--warn);
+}
+
+.steps {
+  padding-left: 1.4rem;
+}
+
+.steps li {
+  padding: 0.35rem 0;
+}
+
 .skeleton {
   height: 7rem;
   background: linear-gradient(90deg, var(--surface) 25%, var(--bar-bg) 50%, var(--surface) 75%);

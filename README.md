@@ -157,8 +157,8 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 ### Tarifler
 | Metot | Yol | Açıklama |
 |---|---|---|
-| GET | `/api/recipes` | Tüm tarifler (sayfalı) |
-| GET | `/api/recipes/{id}` | Tarif detayı |
+| GET | `/api/recipes?limit=20&offset=0` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100 |
+| GET | `/api/recipes/{id}` | Tarif detayı. Her malzemede `in_pantry` alanı vardır (buzdolabında var ya da temel malzeme) |
 | POST | `/api/recipes` | Tarif ekle |
 | PUT | `/api/recipes/{id}` | Tarif güncelle |
 | DELETE | `/api/recipes/{id}` | Tarif sil |
