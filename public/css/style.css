@@ -528,6 +528,40 @@ textarea:focus-visible {
   }
 }
 
+/* Porsiyon seçici */
+.servings {
+  margin: 0.75rem 0 0.5rem;
+}
+
+.servings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.servings-row label {
+  font-weight: 600;
+}
+
+.servings-row input[type="number"] {
+  width: 5rem;
+  text-align: center;
+}
+
+.servings-row .link-button {
+  margin-top: 0;
+}
+
+.servings-note {
+  margin: 0.4rem 0 0;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .skeleton {
   height: 7rem;
   background: linear-gradient(90deg, var(--surface) 25%, var(--bar-bg) 50%, var(--surface) 75%);

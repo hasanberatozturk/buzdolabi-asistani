@@ -39,7 +39,7 @@ Kullanıcı buzdolabındaki / dolabındaki malzemeleri seçer. Uygulama veritaba
 - [ ] Favori tarifler
 - [ ] Eksik malzemelerden alışveriş listesi oluşturma
 - [ ] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
-- [ ] Porsiyona göre miktar ölçekleme
+- [x] Porsiyona göre miktar ölçekleme
 - [ ] Kullanıcı hesapları (Supabase Auth ile çok kullanıcılı yapı)
 - [ ] Tarif görselleri (Supabase Storage)
 - [ ] Yapay zekâ ile tarif önerisi / malzeme ikamesi ("süt yoksa ne kullanabilirim?")
@@ -79,6 +79,7 @@ buzdolabi-asistani/
 │       ├── home.js          # Ana sayfa girişi (satır içi script yasak, bkz. bölüm 8)
 │       ├── pantry.js
 │       ├── recipes.js
+│       ├── scale.js         # Porsiyon ölçekleme için saf yardımcılar (Node ile test edilir)
 │       ├── recipe.js        # Tarif detay sayfası
 │       └── recipe-form.js
 ├── migrations/              # Alembic migration dosyaları
@@ -89,6 +90,7 @@ buzdolabi-asistani/
 ├── data/
 │   └── seed_recipes.json
 ├── tests/
+│   ├── js/scale.test.mjs    # Frontend yardımcılarının Node testleri (pytest bunları da çalıştırır)
 │   └── test_matching.py
 ├── alembic.ini
 ├── requirements.txt         # Yayında gereken paketler
@@ -301,6 +303,7 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 
 ### `recipe.html?id=7` – Tarif detay
 - Malzeme listesi: ✅ var / ❌ eksik işaretli
+- **Porsiyon seçici** (−/+ düğmeleri ve sayı alanı, 1–1000): miktarlar seçilen porsiyona göre orantılı hesaplanır (`yeni = miktar × seçilen ÷ tarifin porsiyonu`), Türkçe biçimde en çok 2 ondalıkla gösterilir ("1,5 su bardağı"). Tarifin kayıtlı porsiyonu yoksa seçici görünmez ve miktarlar değişmez; miktarı olmayan malzemeler ölçeklenmez. Yapılış adımlarının metni ölçeklenmez; porsiyon değişince bunu belirten bir not gösterilir. Seçim kaydedilmez (sayfa yenilenince tarifin porsiyonuna döner). Hesaplama `public/js/scale.js` içindedir
 - Numaralı yapılış adımları
 - Düzenle / Sil butonları
 

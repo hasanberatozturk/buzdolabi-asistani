@@ -1,5 +1,13 @@
 import * as api from "./api.js";
 import { clear, el } from "./dom.js";
+import {
+  MAX_SERVINGS,
+  MIN_SERVINGS,
+  clampServings,
+  formatQuantity,
+  parseServings,
+  scaleQuantity,
+} from "./scale.js";
 
 const root = document.querySelector("#recipe");
 
@@ -8,15 +16,19 @@ function showMessage(message, isError = false) {
   root.append(el("p", { class: isError ? "status error" : "status", role: "alert" }, message));
 }
 
-function formatAmount(row) {
+// base: tarifin kayıtlı porsiyonu (yoksa null), target: ekranda seçili porsiyon
+function formatAmount(row, base, target) {
   const parts = [];
-  if (row.quantity != null) parts.push(row.quantity.toLocaleString("tr-TR"));
+  if (row.quantity != null) {
+    const quantity = base ? scaleQuantity(row.quantity, base, target) : row.quantity;
+    parts.push(formatQuantity(quantity));
+  }
   if (row.unit) parts.push(row.unit);
   return parts.join(" ");
 }
 
-function renderIngredient(row) {
-  const amount = formatAmount(row);
+function renderIngredient(row, base, target) {
+  const amount = formatAmount(row, base, target);
   return el(
     "li",
     { class: row.in_pantry ? "have" : "lack" },
@@ -31,6 +43,65 @@ function renderIngredient(row) {
   );
 }
 
+// Porsiyon seçici: −/+ düğmeleri ve sayı alanı. Geçerli bir değer oluştukça onChange(porsiyon) çağrılır.
+function servingsControl(base, onChange) {
+  let current = base;
+
+  const input = el("input", {
+    type: "number",
+    id: "servings-input",
+    min: String(MIN_SERVINGS),
+    max: String(MAX_SERVINGS),
+    step: "1",
+    inputmode: "numeric",
+    "aria-label": "Porsiyon sayısı",
+  });
+  const decrease = el("button", { type: "button", class: "icon-button", "aria-label": "Porsiyonu azalt" }, "−");
+  const increase = el("button", { type: "button", class: "icon-button", "aria-label": "Porsiyonu artır" }, "+");
+  const reset = el("button", { type: "button", class: "link-button", hidden: true }, `Orijinale dön (${base})`);
+  const note = el("p", { class: "muted servings-note", "aria-live": "polite" });
+
+  function apply(next, rewriteInput) {
+    current = next;
+    if (rewriteInput) input.value = String(next);
+    decrease.disabled = next <= MIN_SERVINGS;
+    increase.disabled = next >= MAX_SERVINGS;
+    reset.hidden = next === base;
+    note.textContent = next === base ? "" : `Miktarlar ${next} porsiyon için hesaplandı (×${formatQuantity(next / base)}).`;
+    onChange(next);
+  }
+
+  decrease.addEventListener("click", () => apply(clampServings(current - 1), true));
+  increase.addEventListener("click", () => apply(clampServings(current + 1), true));
+  reset.addEventListener("click", () => apply(base, true));
+  input.addEventListener("input", () => {
+    const parsed = parseServings(input.value);
+    if (parsed !== null) apply(parsed, false); // yazarken alanı elle düzeltme
+  });
+  // Geçersiz/boş bırakılırsa son geçerli değere dön
+  input.addEventListener("change", () => {
+    input.value = String(current);
+  });
+
+  input.value = String(base);
+  apply(base, true);
+
+  return el(
+    "div",
+    { class: "servings" },
+    el(
+      "div",
+      { class: "servings-row", role: "group", "aria-label": "Porsiyon sayısı" },
+      el("label", { for: "servings-input" }, "Porsiyon"),
+      decrease,
+      input,
+      increase,
+      reset,
+    ),
+    note,
+  );
+}
+
 function renderRecipe(recipe) {
   document.title = `${recipe.title} · Buzdolabı Asistanı`;
   const lacking = recipe.ingredients.filter((row) => !row.is_optional && !row.in_pantry).length;
@@ -38,6 +109,17 @@ function renderRecipe(recipe) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+
+  const base = recipe.servings; // kayıtlı porsiyon yoksa ölçekleme yapılmaz
+  const ingredientList = el("ul", { class: "ingredient-list" });
+  const stepsNote = el("p", { class: "muted", hidden: true });
+  const refresh = (target) => {
+    ingredientList.replaceChildren(...recipe.ingredients.map((row) => renderIngredient(row, base, target)));
+    stepsNote.hidden = !base || target === base;
+    stepsNote.textContent = `Not: Adımlarda yazan miktarlar tarifin orijinal (${base} porsiyon) hâline göredir.`;
+  };
+  const control = base ? servingsControl(base, refresh) : null;
+  if (!control) refresh(base);
 
   clear(root);
   root.append(
@@ -60,9 +142,11 @@ function renderRecipe(recipe) {
       { class: lacking ? "missing" : "ready" },
       lacking ? `${lacking} zorunlu malzeme eksik.` : "Tüm zorunlu malzemeler hazır ✅",
     ),
-    el("ul", { class: "ingredient-list" }, recipe.ingredients.map(renderIngredient)),
+    ...(control ? [control] : []),
+    ingredientList,
 
     el("h3", {}, "Yapılışı"),
+    stepsNote,
     el("ol", { class: "steps" }, steps.map((step) => el("li", {}, step))),
 
     el(
