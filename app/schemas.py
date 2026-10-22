@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
@@ -22,8 +22,19 @@ class IngredientOut(BaseModel):
     name: str
 
 
+# Makul takvim aralığı; bunun dışı (ör. yıl 9999) bir yazım hatasıdır
+EXPIRY_MIN = date(2000, 1, 1)
+EXPIRY_MAX = date(2100, 12, 31)
+
+
 class PantryAdd(BaseModel):
     ingredient_id: int = Field(ge=1, le=MAX_ID)
+    expires_on: date | None = Field(default=None, ge=EXPIRY_MIN, le=EXPIRY_MAX)
+
+
+class PantryUpdate(BaseModel):
+    # Zorunlu alan: null göndermek tarihi siler, alanı hiç göndermemek 422 verir
+    expires_on: date | None = Field(ge=EXPIRY_MIN, le=EXPIRY_MAX)
 
 
 class RecipeMatchOut(BaseModel):
@@ -32,6 +43,7 @@ class RecipeMatchOut(BaseModel):
     match_ratio: float
     have: list[str]
     missing: list[str]
+    expiring: list[str]  # `have` içinden, yakında bozulacak (veya süresi geçmiş) malzemeler
     prep_minutes: int | None
 
 
@@ -112,11 +124,10 @@ class RecipeDetail(BaseModel):
 
 
 class PantryItemOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     ingredient: IngredientOut
     quantity: float | None
     unit: str | None
-    expires_at: datetime | None
+    expires_on: date | None
+    days_left: int | None  # bugünden itibaren kalan gün; 0 = bugün bitiyor, negatif = süresi geçmiş
     added_at: datetime

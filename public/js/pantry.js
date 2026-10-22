@@ -2,6 +2,7 @@ import * as api from "./api.js";
 import { clear, el } from "./dom.js";
 
 const SEARCH_DELAY_MS = 250;
+const EXPIRY_SOON_DAYS = 3; // sunucudaki app/services/expiry.py::EXPIRY_SOON_DAYS ile aynı olmalı
 
 // Sunucudaki normalize() ile aynı kural (app/utils/text.py): İ/I/ı → i, küçük harf, tek boşluk.
 const fold = (text) => text.trim().replace(/[İIı]/g, "i").toLowerCase().replace(/\s+/g, " ");
@@ -12,14 +13,77 @@ export function initPantry({ onChange }) {
   const chips = document.querySelector("#pantry-chips");
   const status = document.querySelector("#pantry-status");
   const clearButton = document.querySelector("#clear-pantry");
+  const expiryInput = document.querySelector("#add-expiry");
 
   let items = [];
+  let editingId = null; // tarihi o an düzenlenen buzdolabı kaydı
   let timer;
   let searchSeq = 0;
 
   function setStatus(message, isError = false) {
     status.textContent = message;
     status.classList.toggle("error", isError);
+  }
+
+  // Tarihi olanlar önce, en yakın bitenden başlayarak; tarihsizler eklenme sırasıyla sonda.
+  function sortedItems() {
+    const dated = items.filter((item) => item.days_left != null).sort((a, b) => a.days_left - b.days_left);
+    return [...dated, ...items.filter((item) => item.days_left == null)];
+  }
+
+  function expiryLabel(item) {
+    const days = item.days_left;
+    if (days == null) return "📅 tarih ekle";
+    if (days < 0) return `${-days} gün önce bitti`;
+    if (days === 0) return "bugün bitiyor";
+    if (days === 1) return "yarın bitiyor";
+    return `${days} gün kaldı`;
+  }
+
+  function expiryClass(item) {
+    const days = item.days_left;
+    if (days == null) return "";
+    if (days < 0) return " expired";
+    return days <= EXPIRY_SOON_DAYS ? " soon" : "";
+  }
+
+  function expiryControl(item) {
+    if (item.id !== editingId) {
+      return el(
+        "button",
+        {
+          type: "button",
+          class: "chip-date",
+          title: item.expires_on ? `Son kullanma: ${item.expires_on}` : "Son kullanma tarihi ekle",
+          "aria-label": `${item.ingredient.name} son kullanma tarihini değiştir`,
+          onclick: () => {
+            editingId = item.id;
+            renderChips();
+            chips.querySelector(".chip-date-input")?.focus();
+          },
+        },
+        expiryLabel(item),
+      );
+    }
+    const dateInput = el("input", {
+      type: "date",
+      class: "chip-date-input",
+      min: "2000-01-01",
+      max: "2100-12-31",
+      "aria-label": `${item.ingredient.name} son kullanma tarihi (silmek için alanı boşalt)`,
+    });
+    dateInput.value = item.expires_on ?? "";
+    dateInput.addEventListener("change", () => saveExpiry(item, dateInput.value || null));
+    // Seçim yapılmadan odak kaybolursa düzenlemeyi bırak (tarih seçici açılırken odak kısa süre oynayabilir)
+    dateInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (editingId === item.id) {
+          editingId = null;
+          renderChips();
+        }
+      }, 250);
+    });
+    return dateInput;
   }
 
   function renderChips() {
@@ -29,12 +93,13 @@ export function initPantry({ onChange }) {
       chips.append(el("p", { class: "muted" }, "Henüz malzeme eklemedin."));
       return;
     }
-    for (const item of items) {
+    for (const item of sortedItems()) {
       chips.append(
         el(
           "span",
-          { class: "chip" },
+          { class: `chip${expiryClass(item)}` },
           item.ingredient.name,
+          expiryControl(item),
           el(
             "button",
             {
@@ -47,6 +112,17 @@ export function initPantry({ onChange }) {
           ),
         ),
       );
+    }
+  }
+
+  async function saveExpiry(item, expiresOn) {
+    editingId = null;
+    try {
+      await api.updatePantryItem(item.id, expiresOn);
+      await reload();
+    } catch (error) {
+      renderChips();
+      setStatus(error.message, true);
     }
   }
 
@@ -97,9 +173,10 @@ export function initPantry({ onChange }) {
   }
 
   async function add(ingredientId) {
+    const expiresOn = expiryInput.value || null;
     afterPick();
     try {
-      await api.addToPantry(ingredientId);
+      await api.addToPantry(ingredientId, expiresOn);
       await reload();
     } catch (error) {
       setStatus(error.message, true);
@@ -107,20 +184,22 @@ export function initPantry({ onChange }) {
   }
 
   async function createAndAdd(name) {
+    const expiresOn = expiryInput.value || null;
     afterPick();
     try {
       const ingredient = await api.createIngredient(name);
-      await api.addToPantry(ingredient.id);
+      await api.addToPantry(ingredient.id, expiresOn);
       await reload();
     } catch (error) {
       setStatus(error.message, true);
     }
   }
 
-  // Seçim yapılır yapılmaz kutuyu temizle; istek sürerken yazmaya devam edilebilsin.
+  // Seçim yapılır yapılmaz kutuları temizle; istek sürerken yazmaya devam edilebilsin.
   function afterPick() {
     clearTimeout(timer);
     input.value = "";
+    expiryInput.value = "";
     hideResults();
     input.focus();
   }
@@ -161,7 +240,7 @@ export function initPantry({ onChange }) {
     }
   });
   document.addEventListener("click", (event) => {
-    if (!event.target.closest(".search")) hideResults();
+    if (!event.target.closest(".search, .expiry-field")) hideResults();
   });
   clearButton.addEventListener("click", async () => {
     try {

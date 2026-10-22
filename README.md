@@ -35,7 +35,7 @@ Kullanıcı buzdolabındaki / dolabındaki malzemeleri seçer. Uygulama veritaba
 - [ ] Vercel + Supabase üzerinde yayında
 
 ### Sonraki adımlar (isteğe bağlı)
-- [ ] Son kullanma tarihi takibi ("yakında bozulacaklar" ile önce bunları kullanan tarifler)
+- [x] Son kullanma tarihi takibi ("yakında bozulacaklar" ile önce bunları kullanan tarifler)
 - [ ] Favori tarifler
 - [ ] Eksik malzemelerden alışveriş listesi oluşturma
 - [ ] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
@@ -127,7 +127,7 @@ id             PK           id             PK
 recipe_id      FK → recipes ingredient_id  FK → ingredients, UNIQUE
 ingredient_id  FK → ingr.   quantity       (opsiyonel)
 quantity       (ör. 2)      unit           (opsiyonel)
-unit           (ör. "adet") expires_at     (opsiyonel, sonraki sürüm için)
+unit           (ör. "adet") expires_at     (opsiyonel; takvim günü, UTC gece yarısı olarak saklanır)
 is_optional    bool         added_at
 ```
 
@@ -153,8 +153,9 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 ### Buzdolabım
 | Metot | Yol | Açıklama |
 |---|---|---|
-| GET | `/api/pantry` | Buzdolabındaki malzemeler |
-| POST | `/api/pantry` | Malzeme ekle `{ "ingredient_id": 3 }` |
+| GET | `/api/pantry` | Buzdolabındaki malzemeler. Her kayıtta `expires_on` ve `days_left` (0 = bugün bitiyor, negatif = süresi geçmiş; tarih yoksa `null`) bulunur |
+| POST | `/api/pantry` | Malzeme ekle `{ "ingredient_id": 3, "expires_on": "2026-10-25" }` (`expires_on` isteğe bağlı, `YYYY-MM-DD`, 2000–2100 arası) |
+| PATCH | `/api/pantry/{id}` | Son kullanma tarihini değiştir `{ "expires_on": "2026-10-30" }`; `null` tarihi siler. Alan zorunludur (yoksa 422) |
 | DELETE | `/api/pantry/{id}` | Malzeme çıkar |
 | DELETE | `/api/pantry` | Buzdolabını boşalt |
 
@@ -190,6 +191,7 @@ Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/
     "match_ratio": 0.8,
     "have": ["yumurta", "domates", "biber", "tereyağı"],
     "missing": ["soğan"],
+    "expiring": ["yumurta"],
     "prep_minutes": 15
   }
 ]
@@ -208,7 +210,9 @@ Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/
    - `missing = zorunlu − buzdolabı`
    - `match_ratio = len(have) / len(zorunlu)`
 4. `len(missing) <= max_missing` olanları filtrele.
-5. Sırala: önce eksik sayısı (az → çok), sonra eşleşme oranı (yüksek → düşük), sonra hazırlık süresi.
+5. Sırala: önce eksik sayısı (az → çok), sonra **kullanılan yakında-bozulacak malzeme sayısı (çok → az)**, sonra eşleşme oranı (yüksek → düşük), sonra hazırlık süresi.
+
+**Son kullanma tarihi (`app/services/expiry.py`):** Tarih bir takvim günüdür. "Bugün" `TIMEZONE` ortam değişkenine göre hesaplanır (varsayılan `Europe/Istanbul`; Vercel UTC çalıştığı için gün gece yarısı civarında kaymasın). Bugünden itibaren **3 gün veya daha az** kalan (süresi geçmişler dahil) malzemeler "yakında bozulacak" sayılır (`EXPIRY_SOON_DAYS`; arayüzdeki sabit `public/js/pantry.js` içinde aynıdır). Bu malzemeleri kullanan tarifler aynı eksik sayısı içinde öne çıkar ve yanıtta `expiring` listesiyle işaretlenir. Eksik sayısı hâlâ önceliklidir: eksik malzemesi olan bir tarif, tam yapılabilen tarifin önüne geçmez. Saat dilimi verisi için `tzdata` paketi gerekir (`requirements.txt`).
 
 **Performans notu:** Tarifler ve malzemeleri tek sorguda (`selectinload`) çekilir; her tarif için ayrı sorgu atılmaz. Sunucusuz ortamda her veritabanı gidiş-dönüşü Supabase'e ağ üzerinden gittiği için bu önemlidir.
 
@@ -290,8 +294,9 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 
 ### `index.html` – Ana sayfa
 - Üstte malzeme arama kutusu (yazdıkça `/api/ingredients?q=` çağrılır, 250 ms debounce)
-- Seçilen malzemeler "etiket" (chip) olarak görünür, × ile silinir
-- Altta önerilen tarif kartları: başlık, süre, eşleşme oranı çubuğu, eksik malzemeler
+- Arama kutusunun altında isteğe bağlı "Son kullanma tarihi" alanı: önce tarih seçilirse sonraki eklenen malzemeye uygulanır
+- Seçilen malzemeler "etiket" (chip) olarak görünür, × ile silinir. Tarihi olanlar önce, en yakın bitenden başlayarak sıralanır; rozet "yarın bitiyor", "2 gün kaldı", "1 gün önce bitti" gibi gösterir (≤3 gün turuncu, geçmiş kırmızı). Rozete tıklayınca tarih düzenlenir; alanı boşaltmak tarihi siler
+- Altta önerilen tarif kartları: başlık, süre, eşleşme oranı çubuğu, eksik malzemeler; yakında bozulacak malzeme kullanılıyorsa "⏰ Yakında bozulacak: …" satırı ve vurgulu kenarlık
 - "Sadece hemen yapılabilenler" anahtarı (`max_missing=0`)
 
 ### `recipe.html?id=7` – Tarif detay

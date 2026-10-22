@@ -24,6 +24,7 @@ def write_requests(ids):
         ("DELETE", f"/api/recipes/{ids['recipe']}", None),
         ("POST", "/api/ingredients", {"name": "Süt"}),
         ("POST", "/api/pantry", {"ingredient_id": ids["ingredient"]}),
+        ("PATCH", f"/api/pantry/{ids['item']}", {"expires_on": "2026-12-01"}),
         ("DELETE", f"/api/pantry/{ids['item']}", None),
         ("DELETE", "/api/pantry", None),
     ]

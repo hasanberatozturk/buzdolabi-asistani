@@ -26,7 +26,7 @@ export function initRecipes() {
     fill.style.width = `${percent}%`;
     return el(
       "article",
-      { class: "card" },
+      { class: match.expiring.length ? "card has-expiring" : "card" },
       el("h3", {}, el("a", { href: `/recipe.html?id=${match.recipe_id}` }, match.title)),
       match.prep_minutes != null && el("p", { class: "muted" }, `⏱ ${match.prep_minutes} dk`),
       el(
@@ -34,6 +34,7 @@ export function initRecipes() {
         { class: "bar", role: "img", "aria-label": `%${percent} eşleşme` },
         fill,
       ),
+      match.expiring.length > 0 && el("p", { class: "expiring" }, `⏰ Yakında bozulacak: ${match.expiring.join(", ")}`),
       el(
         "p",
         { class: match.missing.length ? "missing" : "ready" },

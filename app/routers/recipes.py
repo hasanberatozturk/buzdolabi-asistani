@@ -17,6 +17,7 @@ from app.schemas import (
     RecipePage,
 )
 from app.security import require_api_key
+from app.services import expiry
 from app.services.ingredients import get_or_create_ingredient
 from app.services.matching import (
     STAPLE_INGREDIENTS,
@@ -51,9 +52,16 @@ def match(
     max_missing: int = Query(2, ge=0, le=20),
     db: Session = Depends(get_db),
 ) -> list[MatchResult]:
-    pantry_ids = set(db.scalars(select(PantryItem.ingredient_id)))
+    pantry_rows = db.execute(select(PantryItem.ingredient_id, PantryItem.expires_at)).all()
+    pantry_ids = {ingredient_id for ingredient_id, _ in pantry_rows}
     if not pantry_ids:
         return []
+    today = expiry.today()
+    expiring_ids = {
+        ingredient_id
+        for ingredient_id, expires_at in pantry_rows
+        if expiry.is_expiring_soon(expiry.days_left(expiry.from_stored(expires_at), today))
+    }
 
     recipes = db.scalars(
         select(Recipe).options(
@@ -73,7 +81,7 @@ def match(
         )
         for recipe in recipes
     ]
-    return match_recipes(candidates, pantry_ids, max_missing)
+    return match_recipes(candidates, pantry_ids, max_missing, expiring_ids)
 
 
 def _load_recipe(db: Session, recipe_id: int) -> Recipe:

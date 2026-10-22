@@ -85,8 +85,13 @@ export function getPantry() {
   return request("/api/pantry");
 }
 
-export function addToPantry(ingredientId) {
-  return postJson("/api/pantry", { ingredient_id: ingredientId });
+export function addToPantry(ingredientId, expiresOn = null) {
+  return postJson("/api/pantry", { ingredient_id: ingredientId, expires_on: expiresOn });
+}
+
+// expiresOn: "YYYY-MM-DD" ya da null (tarihi sil)
+export function updatePantryItem(itemId, expiresOn) {
+  return sendJson("PATCH", `/api/pantry/${itemId}`, { expires_on: expiresOn });
 }
 
 export function removeFromPantry(itemId) {
