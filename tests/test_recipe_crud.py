@@ -92,6 +92,64 @@ def test_create_recipe_rejects_duplicate_ingredient(client):
     assert count(db, Recipe) == 0
 
 
+def conflicting_get_or_create(monkeypatch, failures):
+    """İlk `failures` çağrıda, başka bir isteğin aynı malzemeyi eklemiş olması gibi çakışma fırlatır."""
+    from sqlalchemy.exc import IntegrityError
+
+    from app.routers import recipes
+    from app.services.ingredients import get_or_create_ingredient
+
+    calls = {"n": 0}
+
+    def flaky(db, name):
+        calls["n"] += 1
+        if calls["n"] <= failures:
+            raise IntegrityError("INSERT INTO ingredients", {}, Exception("ingredients_name_key"))
+        return get_or_create_ingredient(db, name)
+
+    monkeypatch.setattr(recipes, "get_or_create_ingredient", flaky)
+    return calls
+
+
+def test_create_recipe_retries_once_on_ingredient_unique_conflict(client, monkeypatch):
+    http, db = client
+    calls = conflicting_get_or_create(monkeypatch, failures=1)
+
+    response = http.post("/api/recipes", json=payload(ingredients=[{"name": "Yumurta"}]))
+
+    assert response.status_code == 201
+    assert calls["n"] == 2  # ilk deneme çakıştı, ikincisi geçti
+    assert count(db, Recipe) == 1
+    assert count(db, Ingredient) == 1
+
+
+def test_update_recipe_retries_once_on_ingredient_unique_conflict(client, monkeypatch):
+    http, db = client
+    recipe_id = http.post("/api/recipes", json=payload()).json()["id"]
+    calls = conflicting_get_or_create(monkeypatch, failures=1)
+
+    response = http.put(f"/api/recipes/{recipe_id}", json=payload(title="Yeni", ingredients=[{"name": "Süt"}]))
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Yeni"
+    assert [row["name"] for row in response.json()["ingredients"]] == ["Süt"]
+    assert calls["n"] == 2
+    assert count(db, RecipeIngredient) == 1
+
+
+def test_persistent_unique_conflict_is_not_swallowed(client, monkeypatch):
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+
+    http, db = client
+    conflicting_get_or_create(monkeypatch, failures=99)
+
+    with pytest.raises(IntegrityError):
+        http.post("/api/recipes", json=payload())
+
+    assert count(db, Recipe) == 0  # yarım kayıt kalmadı
+
+
 def test_update_recipe_replaces_fields_and_ingredients(client):
     http, db = client
     recipe_id = http.post("/api/recipes", json=payload()).json()["id"]

@@ -373,6 +373,19 @@ vercel dev
 # http://localhost:3000
 ```
 
+### Testler
+```bash
+pytest                                  # hızlı: her test kendi bellek içi SQLite'ında
+TEST_DATABASE_URL=postgresql://... pytest   # aynı testler Postgres'te (yavaş, ağ üzerinden)
+```
+`TEST_DATABASE_URL` verilirse testler veritabanında geçici bir `pytest_tmp` şemasında çalışır (`public`'e dokunmaz, oturum sonunda şema silinir); her testten önce tablolar `TRUNCATE` edilir. DDL ve çok sayıda sorgu için **session pooler (5432)** dizesini kullan. Yayın veritabanında çalıştırmadan önce şemayı silme yetkisi olan bir hesap kullandığından emin ol.
+
+### SQLite ↔ Postgres farkları (Aşama 10'da yakalananlar)
+- **Sıralama:** `ORDER BY name` SQLite'ta ikili (Ç, İ, Ş en sonda), Postgres'te veritabanının locale'ine göre (Ç, C'nin yanında) çalışır. Kodda alfabetik sıraya bağımlı mantık yoktur; kullanıcıya görünen sıra iki ortamda biraz farklı olabilir.
+- **Eşzamanlılık:** Aynı yeni malzemeyi içeren iki tarif aynı anda eklenirse ikincisi `ingredients` benzersiz kısıtına çarpar (SQLite'ta tek yazıcı olduğu için görülmez). `create_recipe`/`update_recipe` çakışmada işlemi geri alıp bir kez yeniden dener (`_commit_retrying_on_conflict`); 8 eşzamanlı istekle denendi, hepsi 201 döndü.
+- **Saat dilimi:** `DateTime(timezone=True)` Postgres'te `+00:00` ile döner; SQLite'ta saat dilimi bilgisi kaybolur.
+- **Transaction pooler (6543):** `NullPool` ve `prepare_threshold=None` ile 16 iş parçacığıyla 120 karışık istek hatasız çalıştı ("prepared statement" hatası yok).
+
 ### `requirements.txt`
 ```
 fastapi

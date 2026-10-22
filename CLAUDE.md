@@ -20,7 +20,8 @@ alembic revision --autogenerate -m "aciklama"     # model değişince yeni migra
 python scripts/seed.py                            # örnek verileri yükle
 uvicorn app.main:app --reload                     # sadece API → http://localhost:8000/docs
 vercel dev                                        # frontend + API → http://localhost:3000
-pytest                                            # testler
+pytest                                            # testler (SQLite)
+TEST_DATABASE_URL=postgresql://... pytest         # aynı testler Postgres'te, geçici şemada
 ```
 
 ## Klasör yapısı (özet)

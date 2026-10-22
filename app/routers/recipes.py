@@ -1,5 +1,8 @@
+from collections.abc import Callable
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -105,6 +108,25 @@ def _build_ingredients(db: Session, payload: RecipeIn) -> list[RecipeIngredient]
     return rows
 
 
+def _commit_retrying_on_conflict(db: Session, work: Callable[[], Recipe]) -> Recipe:
+    """`work`'ü çalıştırıp commit eder; benzersizlik çakışmasında bir kez daha dener.
+
+    Aynı yeni malzemeyi aynı anda ekleyen iki istekten ikincisi `ingredients` üzerindeki
+    benzersiz kısıta çarpar (Postgres'te gerçek eşzamanlılıkla görülür). Geri alınıp
+    yeniden denenince kazanan isteğin malzemesi artık vardır ve yeniden kullanılır.
+    """
+    for attempt in (1, 2):
+        try:
+            recipe = work()
+            db.commit()
+            return recipe
+        except IntegrityError:
+            db.rollback()
+            if attempt == 2:
+                raise
+    raise AssertionError("ulaşılamaz")
+
+
 def _apply_fields(recipe: Recipe, payload: RecipeIn) -> None:
     recipe.title = payload.title
     recipe.description = payload.description
@@ -118,11 +140,14 @@ def _apply_fields(recipe: Recipe, payload: RecipeIn) -> None:
     "", response_model=RecipeDetail, status_code=201, dependencies=[Depends(require_api_key)]
 )
 def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDetail:
-    recipe = Recipe()
-    _apply_fields(recipe, payload)
-    recipe.ingredients = _build_ingredients(db, payload)
-    db.add(recipe)
-    db.commit()
+    def work() -> Recipe:
+        recipe = Recipe()
+        _apply_fields(recipe, payload)
+        recipe.ingredients = _build_ingredients(db, payload)
+        db.add(recipe)
+        return recipe
+
+    recipe = _commit_retrying_on_conflict(db, work)
     return _to_detail(db, _load_recipe(db, recipe.id))
 
 
@@ -134,10 +159,13 @@ def update_recipe(
     recipe_id: int = Path(ge=1, le=MAX_ID),
     db: Session = Depends(get_db),
 ) -> RecipeDetail:
-    recipe = _load_recipe(db, recipe_id)
-    _apply_fields(recipe, payload)
-    recipe.ingredients = _build_ingredients(db, payload)  # eskiler delete-orphan ile silinir
-    db.commit()
+    def work() -> Recipe:
+        recipe = _load_recipe(db, recipe_id)
+        _apply_fields(recipe, payload)
+        recipe.ingredients = _build_ingredients(db, payload)  # eskiler delete-orphan ile silinir
+        return recipe
+
+    _commit_retrying_on_conflict(db, work)
     return _to_detail(db, _load_recipe(db, recipe_id))
 
 
