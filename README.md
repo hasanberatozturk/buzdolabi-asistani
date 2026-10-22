@@ -387,15 +387,7 @@ TEST_DATABASE_URL=postgresql://... pytest   # aynı testler Postgres'te (yavaş,
 - **Transaction pooler (6543):** `NullPool` ve `prepare_threshold=None` ile 16 iş parçacığıyla 120 karışık istek hatasız çalıştı ("prepared statement" hatası yok).
 
 ### `requirements.txt`
-```
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg[binary]
-alembic
-pydantic
-python-dotenv
-```
+Yayında kurulan paketler **tam sürüm numarasıyla sabittir** (`fastapi==0.157.0` gibi); böylece Vercel'in kuracağı sürümler yerelde test edilenlerle aynıdır. Güncellemek için sürümü değiştir, `pytest` (ve gerekirse `TEST_DATABASE_URL` ile Postgres'te) çalıştır. Python sürümü `.python-version` dosyasıyla (3.12) sabitlenir.
 
 ### `requirements-dev.txt`
 ```
@@ -433,11 +425,12 @@ __pycache__/
 5. **Connect** → *Transaction pooler* dizesini al (Vercel için).
 
 ### Vercel
-1. Projeyi GitHub'a gönder.
-2. Vercel'de **Add New → Project** ile repoyu içe aktar; FastAPI otomatik algılanır.
-3. **Environment Variables:** `DATABASE_URL` = transaction pooler dizesi, `ADMIN_KEY` = uzun rastgele anahtar (bkz. `.env.example`).
-4. Fonksiyon bölgesini Supabase'e yakın seç (ör. Frankfurt, `fra1`).
-5. Deploy. Sonraki her `git push` otomatik yeni sürüm yayınlar.
+1. Projeyi GitHub'a gönder. **Depo herkese açıksa** içinde şifre, bağlantı dizesi veya anahtar olmadığından emin ol (`.env` git'te değildir; `.env.example` yalnızca şablon içerir).
+2. Vercel'de **Add New → Project** ile repoyu içe aktar; FastAPI `app/main.py` içinden otomatik algılanır. `public/` klasörü CDN'den sunulur, `vercel.json` başlıkları ve fonksiyon bölgesini (`dub1`, Supabase `eu-west-1` ile aynı bölge) belirler.
+3. **İlk deploy'dan önce**, içe aktarma ekranındaki **Environment Variables** bölümüne (şifreler sohbete/koda yazılmadan, doğrudan panele) ekle:
+   - `DATABASE_URL` = Supabase **transaction pooler** dizesi (port 6543)
+   - `ADMIN_KEY` = uzun rastgele anahtar (bkz. `.env.example`); **Production ve Preview** ortamlarının ikisine de, yoksa o ortamda yazma istekleri 503 verir
+4. Deploy. Sonraki her `git push` otomatik yeni sürüm yayınlar.
 
 ### Deploy sonrası kontrol listesi
 - [ ] `https://<proje>.vercel.app/api/health` → veritabanı bağlantısı OK
