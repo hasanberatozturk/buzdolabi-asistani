@@ -1,6 +1,7 @@
 import pytest
 
 from app import config
+from app.models import ShoppingItem
 
 KEY = "test-anahtari-123"
 RECIPE = {"title": "Omlet", "instructions": "Pişir.", "ingredients": [{"name": "Yumurta"}]}
@@ -13,8 +14,16 @@ def locked(client, monkeypatch):
     recipe_id = http.post("/api/recipes", json=RECIPE).json()["id"]
     ingredient_id = http.get("/api/ingredients").json()[0]["id"]
     item_id = http.post("/api/pantry", json={"ingredient_id": ingredient_id}).json()["id"]
+    shopping = ShoppingItem(ingredient_id=ingredient_id, checked=True)
+    db.add(shopping)
+    db.commit()
     monkeypatch.setattr(config, "ADMIN_KEY", KEY)
-    return http, {"recipe": recipe_id, "ingredient": ingredient_id, "item": item_id}
+    return http, {
+        "recipe": recipe_id,
+        "ingredient": ingredient_id,
+        "item": item_id,
+        "shopping": shopping.id,
+    }
 
 
 def write_requests(ids):
@@ -27,6 +36,11 @@ def write_requests(ids):
         ("PATCH", f"/api/pantry/{ids['item']}", {"expires_on": "2026-12-01"}),
         ("DELETE", f"/api/pantry/{ids['item']}", None),
         ("DELETE", "/api/pantry", None),
+        ("POST", "/api/shopping/from-recipe", {"recipe_id": ids["recipe"]}),
+        ("POST", "/api/shopping/move-to-pantry", None),
+        ("PATCH", f"/api/shopping/{ids['shopping']}", {"checked": False}),
+        ("DELETE", f"/api/shopping/{ids['shopping']}", None),
+        ("DELETE", "/api/shopping", None),
     ]
 
 
@@ -62,6 +76,10 @@ def test_correct_key_allows_writes(locked):
     assert http.put(f"/api/recipes/{ids['recipe']}", json=RECIPE, headers=headers).status_code == 200
     assert http.post("/api/ingredients", json={"name": "Süt"}, headers=headers).status_code == 201
     assert http.delete(f"/api/pantry/{ids['item']}", headers=headers).status_code == 204
+    patched = http.patch(f"/api/shopping/{ids['shopping']}", json={"checked": False}, headers=headers)
+    assert patched.status_code == 200
+    assert http.post("/api/shopping/from-recipe", json={"recipe_id": ids["recipe"]}, headers=headers).status_code == 200
+    assert http.delete(f"/api/shopping/{ids['shopping']}", headers=headers).status_code == 204
     assert http.delete(f"/api/recipes/{ids['recipe']}", headers=headers).status_code == 204
 
 
@@ -79,6 +97,7 @@ def test_read_endpoints_stay_public(locked):
     assert http.get("/api/recipes/match").status_code == 200
     assert http.get("/api/ingredients").status_code == 200
     assert http.get("/api/pantry").status_code == 200
+    assert http.get("/api/shopping").status_code == 200
 
 
 def test_without_key_configured_writes_are_open_locally(client):

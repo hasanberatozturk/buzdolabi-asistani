@@ -528,6 +528,65 @@ textarea:focus-visible {
   }
 }
 
+/* Alışveriş listesi */
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.header-actions .button {
+  margin-top: 0;
+}
+
+.site-header .back-link + .back-link {
+  margin-left: 1rem;
+}
+
+.shopping-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shopping-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.shopping-item {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+.shopping-item input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent);
+}
+
+.shopping-row.done .shopping-item span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.shopping-add {
+  margin: 0.75rem 0 0;
+}
+
+.shopping-add .status {
+  margin: 0.5rem 0 0;
+}
+
 /* Porsiyon seçici */
 .servings {
   margin: 0.75rem 0 0.5rem;

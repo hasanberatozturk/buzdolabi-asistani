@@ -32,10 +32,10 @@ app/main.py            FastAPI uygulaması — Vercel giriş noktası, adı ve y
 app/database.py        engine + session, SQLite/Postgres ayrımı burada
 app/models.py          SQLAlchemy modelleri
 app/schemas.py         Pydantic şemaları
-app/routers/           ingredients.py, pantry.py, recipes.py
+app/routers/           ingredients.py, pantry.py, recipes.py, shopping.py
 app/services/matching.py   eşleştirme algoritması
 app/utils/text.py      Türkçe normalize()
-public/                frontend (index.html, recipe.html, recipe-form.html, css/, js/)
+public/                frontend (index.html, recipe.html, recipe-form.html, shopping.html, css/, js/)
 migrations/            Alembic
 scripts/seed.py        seed yükleyici, veriyi data/seed_recipes.json'dan okur
 tests/

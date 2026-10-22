@@ -118,6 +118,31 @@ export function deleteRecipe(id) {
   return request(`/api/recipes/${id}`, { method: "DELETE" });
 }
 
+export function getShopping() {
+  return request("/api/shopping");
+}
+
+// Tarifin eksik malzemelerini listeye ekler; servings verilirse miktarlar o porsiyona göre ölçeklenir.
+export function addMissingToShopping(recipeId, servings = null) {
+  return postJson("/api/shopping/from-recipe", { recipe_id: recipeId, servings });
+}
+
+export function updateShoppingItem(itemId, checked) {
+  return sendJson("PATCH", `/api/shopping/${itemId}`, { checked });
+}
+
+export function removeShoppingItem(itemId) {
+  return request(`/api/shopping/${itemId}`, { method: "DELETE" });
+}
+
+export function clearShopping(onlyChecked = false) {
+  return request(`/api/shopping?only_checked=${onlyChecked}`, { method: "DELETE" });
+}
+
+export function moveShoppingToPantry() {
+  return request("/api/shopping/move-to-pantry", { method: "POST" });
+}
+
 export function matchRecipes(maxMissing) {
   return request(`/api/recipes/match?max_missing=${maxMissing}`);
 }

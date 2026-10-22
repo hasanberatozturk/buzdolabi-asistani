@@ -17,7 +17,7 @@ from app.models import Base
 #   TEST_DATABASE_URL=postgresql://... pytest
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 TEST_SCHEMA = "pytest_tmp"
-TABLES = ("pantry_items", "recipe_ingredients", "recipes", "ingredients")
+TABLES = ("shopping_items", "pantry_items", "recipe_ingredients", "recipes", "ingredients")
 
 
 @pytest.fixture(autouse=True)

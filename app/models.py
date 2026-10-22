@@ -62,3 +62,16 @@ class PantryItem(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     ingredient: Mapped[Ingredient] = relationship()
+
+
+class ShoppingItem(Base):
+    __tablename__ = "shopping_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id"), unique=True)
+    quantity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    checked: Mapped[bool] = mapped_column(Boolean, default=False)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    ingredient: Mapped[Ingredient] = relationship()

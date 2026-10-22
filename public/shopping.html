@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Alışveriş listesi · Buzdolabı Asistanı</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="back-link" href="/">← Ana sayfa</a>
+    </header>
+
+    <main>
+      <h2>🛒 Alışveriş listesi</h2>
+      <p id="shopping-summary" class="muted" aria-live="polite"></p>
+      <p id="shopping-status" class="status" role="status" aria-live="polite">Yükleniyor…</p>
+
+      <ul id="shopping-list" class="shopping-list"></ul>
+
+      <div id="shopping-actions" class="actions" hidden>
+        <button id="move-checked" type="button" class="primary">Alınanları buzdolabına taşı</button>
+        <button id="clear-checked" type="button" class="secondary">Alınanları listeden sil</button>
+        <button id="clear-all" type="button" class="danger">Listeyi boşalt</button>
+      </div>
+    </main>
+
+    <script type="module" src="/js/shopping.js"></script>
+  </body>
+</html>

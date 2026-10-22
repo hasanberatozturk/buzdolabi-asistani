@@ -4,7 +4,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TABLES = ("ingredients", "recipes", "recipe_ingredients", "pantry_items", "alembic_version")
+TABLES = (
+    "ingredients",
+    "recipes",
+    "recipe_ingredients",
+    "pantry_items",
+    "alembic_version",
+    "shopping_items",
+)
 
 
 def offline_sql(database_url: str) -> str:

@@ -131,3 +131,34 @@ class PantryItemOut(BaseModel):
     expires_on: date | None
     days_left: int | None  # bugünden itibaren kalan gün; 0 = bugün bitiyor, negatif = süresi geçmiş
     added_at: datetime
+
+
+class ShoppingItemOut(BaseModel):
+    id: int
+    ingredient: IngredientOut
+    quantity: float | None
+    unit: str | None
+    checked: bool
+    added_at: datetime
+
+
+class ShoppingFromRecipe(BaseModel):
+    recipe_id: int = Field(ge=1, le=MAX_ID)
+    # Seçili porsiyon; verilirse miktarlar tarifin porsiyonuna göre orantılı ölçeklenir
+    servings: int | None = Field(default=None, ge=1, le=1000)
+
+
+class ShoppingAddResult(BaseModel):
+    added: int  # listeye yeni eklenen malzeme sayısı
+    already_listed: int  # eksik olup zaten listede bulunan malzeme sayısı
+    nothing_missing: bool  # tarifte buzdolabında olmayan zorunlu malzeme yok
+
+
+class ShoppingUpdate(BaseModel):
+    # Zorunlu alan: boş gövde 422 verir
+    checked: bool
+
+
+class ShoppingMoveResult(BaseModel):
+    moved: int  # buzdolabına taşınıp listeden çıkarılan işaretli malzeme sayısı
+

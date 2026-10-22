@@ -37,7 +37,7 @@ Kullanıcı buzdolabındaki / dolabındaki malzemeleri seçer. Uygulama veritaba
 ### Sonraki adımlar (isteğe bağlı)
 - [x] Son kullanma tarihi takibi ("yakında bozulacaklar" ile önce bunları kullanan tarifler)
 - [ ] Favori tarifler
-- [ ] Eksik malzemelerden alışveriş listesi oluşturma
+- [x] Eksik malzemelerden alışveriş listesi oluşturma
 - [ ] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
 - [x] Porsiyona göre miktar ölçekleme
 - [ ] Kullanıcı hesapları (Supabase Auth ile çok kullanıcılı yapı)
@@ -62,7 +62,8 @@ buzdolabi-asistani/
 │   ├── routers/
 │   │   ├── ingredients.py
 │   │   ├── pantry.py
-│   │   └── recipes.py
+│   │   ├── recipes.py
+│   │   └── shopping.py
 │   ├── services/
 │   │   └── matching.py      # Eşleştirme algoritması
 │   └── utils/
@@ -71,6 +72,7 @@ buzdolabi-asistani/
 │   ├── index.html           # Ana sayfa: buzdolabım + önerilen tarifler
 │   ├── recipe.html          # Tarif detay
 │   ├── recipe-form.html     # Tarif ekle / düzenle
+│   ├── shopping.html        # Alışveriş listesi
 │   ├── css/
 │   │   └── style.css
 │   └── js/
@@ -131,6 +133,15 @@ ingredient_id  FK → ingr.   quantity       (opsiyonel)
 quantity       (ör. 2)      unit           (opsiyonel)
 unit           (ör. "adet") expires_at     (opsiyonel; takvim günü, UTC gece yarısı olarak saklanır)
 is_optional    bool         added_at
+
+shopping_items
+──────────────
+id             PK
+ingredient_id  FK → ingredients, UNIQUE   (bir malzeme listede en fazla bir kez bulunur)
+quantity       (opsiyonel; tariften gelir, seçili porsiyona göre ölçeklenmiş)
+unit           (opsiyonel)
+checked        bool          (satın alındı)
+added_at
 ```
 
 **Notlar:**
@@ -138,7 +149,7 @@ is_optional    bool         added_at
 - `is_optional`: "Üzerine maydanoz serpilebilir" gibi malzemeler eşleşme oranını düşürmez.
 - Tarif silinince malzeme satırlarının da silinmesi için SQLAlchemy ilişkisinde `cascade="all, delete-orphan"` kullanılır (SQLite'ta foreign key'ler varsayılan olarak kapalı olduğundan ORM seviyesinde çözmek daha güvenli).
 - Sadece iki veritabanında da çalışan tipler kullanılır (`String`, `Text`, `Integer`, `Boolean`, `DateTime(timezone=True)`); SQLite'a veya Postgres'e özel tiplerden kaçınılır.
-- MVP tek kullanıcılı olduğu için `pantry_items` tablosunda `user_id` yok. Supabase Auth eklenirse bu alan eklenir.
+- MVP tek kullanıcılı olduğu için `pantry_items` ve `shopping_items` tablolarında `user_id` yok. Supabase Auth eklenirse bu alan eklenir.
 
 ---
 
@@ -171,8 +182,20 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 | DELETE | `/api/recipes/{id}` | Tarif sil (malzeme satırları da silinir, malzeme kataloğu korunur) |
 | GET | `/api/recipes/match?max_missing=2` | Buzdolabındaki malzemelere göre eşleşen tarifler |
 
+### Alışveriş listesi
+| Metot | Yol | Açıklama |
+|---|---|---|
+| GET | `/api/shopping` | Liste (alınmamışlar önce, sonra ekleme sırasıyla). Her kayıtta `ingredient`, `quantity`, `unit`, `checked` |
+| POST | `/api/shopping/from-recipe` | `{ "recipe_id": 7, "servings": 4 }` — tarifin **zorunlu, buzdolabında olmayan** malzemelerini listeye ekler. İsteğe bağlı malzemeler ve temel malzemeler (su, tuz, karabiber) eklenmez; listede zaten olan atlanır. `servings` verilirse miktarlar tarifin porsiyonuna göre ölçeklenir. Yanıt: `{added, already_listed, nothing_missing}` |
+| PATCH | `/api/shopping/{id}` | `{ "checked": true }` — satın alındı işareti (alan zorunlu) |
+| POST | `/api/shopping/move-to-pantry` | İşaretli malzemeleri buzdolabına taşır (miktar/birimle) ve listeden çıkarır; zaten buzdolabında olan tekrar eklenmez. Yanıt: `{moved}` |
+| DELETE | `/api/shopping/{id}` | Malzemeyi listeden sil |
+| DELETE | `/api/shopping?only_checked=true` | Yalnızca işaretlileri sil; parametresiz tüm listeyi boşaltır |
+
+İki istek aynı malzemeyi aynı anda eklemeye çalışırsa ikincisi benzersiz kısıta çarpar; işlem geri alınıp bir kez yeniden denenir (kazanan kayıt görünür ve atlanır).
+
 ### Yazma koruması (`ADMIN_KEY`)
-Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/`PUT`/`DELETE`: tarifler, malzeme ekleme, buzdolabı) `X-API-Key` başlığında `ADMIN_KEY` değerini ister; yanlış veya eksikse **401** döner. Okuma uç noktaları (`GET`) herkese açıktır.
+Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/`PUT`/`PATCH`/`DELETE`: tarifler, malzeme ekleme, buzdolabı, alışveriş listesi) `X-API-Key` başlığında `ADMIN_KEY` değerini ister; yanlış veya eksikse **401** döner. Okuma uç noktaları (`GET`) herkese açıktır.
 
 - `ADMIN_KEY` tanımsızsa: yerelde koruma kapalıdır, Vercel'de yazma istekleri **503** döner (anahtarsız yayına çıkılamaz).
 - Kontrol `app/security.py` içindeki `require_api_key` bağımlılığıyla yapılır; yeni bir yazma uç noktası eklerken `dependencies=[Depends(require_api_key)]` eklenmelidir.
@@ -304,8 +327,14 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 ### `recipe.html?id=7` – Tarif detay
 - Malzeme listesi: ✅ var / ❌ eksik işaretli
 - **Porsiyon seçici** (−/+ düğmeleri ve sayı alanı, 1–1000): miktarlar seçilen porsiyona göre orantılı hesaplanır (`yeni = miktar × seçilen ÷ tarifin porsiyonu`), Türkçe biçimde en çok 2 ondalıkla gösterilir ("1,5 su bardağı"). Tarifin kayıtlı porsiyonu yoksa seçici görünmez ve miktarlar değişmez; miktarı olmayan malzemeler ölçeklenmez. Yapılış adımlarının metni ölçeklenmez; porsiyon değişince bunu belirten bir not gösterilir. Seçim kaydedilmez (sayfa yenilenince tarifin porsiyonuna döner). Hesaplama `public/js/scale.js` içindedir
+- **"🛒 Eksik malzemeleri alışveriş listesine ekle"** düğmesi (eksik zorunlu malzeme varsa görünür): seçili porsiyona göre ölçeklenmiş miktarlarla ekler; sonucu "4 malzeme listeye eklendi" / "hepsi zaten listede" şeklinde bildirir
 - Numaralı yapılış adımları
 - Düzenle / Sil butonları
+
+### `shopping.html` – Alışveriş listesi
+- Her satırda onay kutusu (alındı işareti; işaretliler üstü çizili olarak alta iner) ve × ile silme
+- "Alınanları buzdolabına taşı", "Alınanları listeden sil", "Listeyi boşalt" (onay sorar) düğmeleri
+- Boş listede açıklama ve ana sayfaya bağlantı. Ana sayfa ve tarif sayfasında bu sayfaya bağlantı vardır
 
 ### `recipe-form.html` – Tarif ekle / düzenle
 - Başlık, açıklama, süre, porsiyon
@@ -439,6 +468,9 @@ __pycache__/
    - `DATABASE_URL` = Supabase **transaction pooler** dizesi (port 6543)
    - `ADMIN_KEY` = uzun rastgele anahtar (bkz. `.env.example`); **Production ve Preview** ortamlarının ikisine de, yoksa o ortamda yazma istekleri 503 verir
 4. Deploy. Sonraki her `git push` otomatik yeni sürüm yayınlar.
+
+### Yeni migration içeren sürümler
+Vercel her `git push`'ta otomatik deploy eder; kod yeni bir tabloya erişiyorsa ve tablo henüz yoksa o uç noktalar 500 verir. Bu yüzden sıra şöyledir: (1) yerelde `pytest` ve gerekirse `TEST_DATABASE_URL` ile Postgres testleri, (2) **yayın veritabanında `alembic upgrade head`** (session pooler, `.env`'deki `DATABASE_URL` ile; geri alınamaz işlem olduğundan önce onay), (3) Supabase'te RLS ve Advisors kontrolü, (4) `git push`. Eski kod yeni tabloyu kullanmadığından migration'ı önce uygulamak güvenlidir.
 
 ### Deploy sonrası kontrol listesi
 - [ ] `https://<proje>.vercel.app/api/health` → veritabanı bağlantısı OK
