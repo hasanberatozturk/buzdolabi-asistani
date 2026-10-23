@@ -11,6 +11,8 @@ TABLES = (
     "pantry_items",
     "alembic_version",
     "shopping_items",
+    "tags",
+    "recipe_tags",
 )
 
 

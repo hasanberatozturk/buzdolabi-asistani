@@ -1,3 +1,5 @@
+import { buildMatchQuery } from "./tags.js";
+
 // Tüm fetch çağrıları sadece bu dosyada; diğer dosyalar bu fonksiyonları kullanır.
 
 // Yazma istekleri sunucuda ADMIN_KEY ile korunur. Anahtar koda gömülmez: sunucu 401
@@ -143,6 +145,11 @@ export function moveShoppingToPantry() {
   return request("/api/shopping/move-to-pantry", { method: "POST" });
 }
 
-export function matchRecipes(maxMissing) {
-  return request(`/api/recipes/match?max_missing=${maxMissing}`);
+// filters: { tags: ["kahvaltı"], maxMinutes: 30 } (ikisi de isteğe bağlı; etiketlerin hepsi aranır)
+export function matchRecipes(maxMissing, filters = {}) {
+  return request(`/api/recipes/match?${buildMatchQuery({ maxMissing, ...filters })}`);
+}
+
+export function getTags() {
+  return request("/api/tags");
 }

@@ -1,5 +1,6 @@
 import * as api from "./api.js";
 import { clear, el } from "./dom.js";
+import { MAX_TAG_LENGTH, MAX_TAGS, hasTag, parseTags, toggleTag } from "./tags.js";
 
 const SUGGEST_DELAY_MS = 250;
 
@@ -11,6 +12,8 @@ const rows = document.querySelector("#ingredient-rows");
 const suggestions = document.querySelector("#ingredient-suggestions");
 const submitButton = document.querySelector("#submit");
 const cancelLink = document.querySelector("#cancel");
+const tagsInput = document.querySelector("#tags");
+const tagSuggestions = document.querySelector("#tag-suggestions");
 
 const recipeId = new URLSearchParams(location.search).get("id");
 let suggestTimer;
@@ -130,6 +133,7 @@ function collect() {
     servings: numberOrNull(document.querySelector("#servings").value),
     instructions: document.querySelector("#instructions").value.trim(),
     ingredients,
+    tags: parseTags(tagsInput.value),
   };
 }
 
@@ -137,6 +141,8 @@ function validate(data) {
   if (!data.title) return "Başlık boş olamaz.";
   if (data.ingredients.length === 0) return "En az bir malzeme eklemelisin.";
   if (!data.instructions) return "Yapılış adımlarını yazmalısın.";
+  if (data.tags.length > MAX_TAGS) return `En çok ${MAX_TAGS} etiket ekleyebilirsin.`;
+  if (data.tags.some((tag) => tag.length > MAX_TAG_LENGTH)) return `Her etiket en çok ${MAX_TAG_LENGTH} karakter olabilir.`;
   return null;
 }
 
@@ -146,6 +152,8 @@ function fill(recipe) {
   document.querySelector("#prep-minutes").value = recipe.prep_minutes ?? "";
   document.querySelector("#servings").value = recipe.servings ?? "";
   document.querySelector("#instructions").value = recipe.instructions;
+  tagsInput.value = recipe.tags.join(", ");
+  updateSuggestionStates();
   clear(rows);
   recipe.ingredients.forEach(addRow);
 }
@@ -207,4 +215,41 @@ async function init() {
   }
 }
 
+// Mevcut etiketleri tek tıkla ekleyip çıkarmak için düğmeler (yazı alanı ile eşzamanlı tutulur)
+function updateSuggestionStates() {
+  const current = parseTags(tagsInput.value);
+  for (const button of tagSuggestions.querySelectorAll("button")) {
+    button.setAttribute("aria-pressed", String(hasTag(current, button.dataset.tag)));
+  }
+}
+
+async function loadTagSuggestions() {
+  try {
+    const tags = await api.getTags();
+    if (tags.length === 0) return;
+    for (const tag of tags) {
+      const button = el(
+        "button",
+        {
+          type: "button",
+          class: "filter-chip",
+          "data-tag": tag.name,
+          onclick: () => {
+            tagsInput.value = toggleTag(parseTags(tagsInput.value), tag.name).join(", ");
+            updateSuggestionStates();
+          },
+        },
+        tag.name,
+      );
+      tagSuggestions.append(button);
+    }
+    tagSuggestions.hidden = false;
+    updateSuggestionStates();
+  } catch {
+    // Öneriler alınamazsa etiketler yine elle yazılabilir
+  }
+}
+
+tagsInput.addEventListener("input", updateSuggestionStates);
+loadTagSuggestions();
 init();

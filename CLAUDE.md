@@ -22,7 +22,7 @@ uvicorn app.main:app --reload                     # sadece API → http://localh
 vercel dev                                        # frontend + API → http://localhost:3000
 pytest                                            # testler (SQLite)
 TEST_DATABASE_URL=postgresql://... pytest         # aynı testler Postgres'te, geçici şemada
-node --test tests/js/                             # frontend'in saf JS yardımcıları (pytest de çalıştırır; Node yoksa atlanır)
+node --test "tests/js/*.test.mjs"                # frontend'in saf JS yardımcıları (pytest de çalıştırır; Node yoksa atlanır)
 ```
 
 ## Klasör yapısı (özet)
@@ -32,10 +32,11 @@ app/main.py            FastAPI uygulaması — Vercel giriş noktası, adı ve y
 app/database.py        engine + session, SQLite/Postgres ayrımı burada
 app/models.py          SQLAlchemy modelleri
 app/schemas.py         Pydantic şemaları
-app/routers/           ingredients.py, pantry.py, recipes.py, shopping.py
+app/routers/           ingredients.py, pantry.py, recipes.py, shopping.py, tags.py
 app/services/matching.py   eşleştirme algoritması
 app/utils/text.py      Türkçe normalize()
 public/                frontend (index.html, recipe.html, recipe-form.html, shopping.html, css/, js/)
+                       js/text.js fold() sunucudaki normalize() ile aynı kuralı uygular; birini değiştirirsen ikisini de değiştir
 migrations/            Alembic
 scripts/seed.py        seed yükleyici, veriyi data/seed_recipes.json'dan okur
 tests/
@@ -87,7 +88,7 @@ tests/
 ### Frontend
 - ES modülleri (`<script type="module">`). Kütüphane veya CDN bağımlılığı ekleme.
 - Tüm `fetch` çağrıları sadece `public/js/api.js` içinde; diğer dosyalar bu fonksiyonları kullanır.
-- Hesaplama/biçimlendirme gibi saf mantık DOM'dan ayrı, test edilebilir modüllerde durur (örn. `scale.js`) ve `tests/js/` altında Node testi olur. Sunucudaki bir sınırı yansıtan sabitler (örn. `MAX_SERVINGS`) için `tests/test_js_scale.py`'deki gibi eşitlik testi eklenir.
+- Hesaplama/biçimlendirme gibi saf mantık DOM'dan ayrı, test edilebilir modüllerde durur (örn. `scale.js`) ve `tests/js/` altında Node testi olur. Sunucudaki bir sınırı yansıtan sabitler (örn. `MAX_SERVINGS`) için `tests/test_js.py`'deki gibi eşitlik testi eklenir.
 - Her zaman göreli yol: `fetch("/api/recipes")`. Tam URL veya `localhost` yazma.
 - Her API çağrısında yükleniyor durumu ve hata mesajı göster (soğuk başlatma gecikebilir).
 - Renkler ve aralıklar `:root` içinde CSS değişkenleri; açık/koyu mod `prefers-color-scheme` ile. Mobil öncelikli.

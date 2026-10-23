@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -20,6 +20,23 @@ class Ingredient(Base):
     normalized: Mapped[str] = mapped_column(String(100), unique=True, index=True)
 
 
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True)
+    normalized: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+
+
+# Tarif ↔ etiket çoktan çoğa ilişkisi; tarif silinince satırlar SQLAlchemy tarafından silinir
+recipe_tags = Table(
+    "recipe_tags",
+    Base.metadata,
+    Column("recipe_id", ForeignKey("recipes.id"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id"), primary_key=True, index=True),
+)
+
+
 class Recipe(Base):
     __tablename__ = "recipes"
 
@@ -35,6 +52,7 @@ class Recipe(Base):
     ingredients: Mapped[list["RecipeIngredient"]] = relationship(
         back_populates="recipe", cascade="all, delete-orphan"
     )
+    tags: Mapped[list[Tag]] = relationship(secondary=recipe_tags, order_by=Tag.normalized)
 
 
 class RecipeIngredient(Base):

@@ -38,7 +38,7 @@ Kullanıcı buzdolabındaki / dolabındaki malzemeleri seçer. Uygulama veritaba
 - [x] Son kullanma tarihi takibi ("yakında bozulacaklar" ile önce bunları kullanan tarifler)
 - [ ] Favori tarifler
 - [x] Eksik malzemelerden alışveriş listesi oluşturma
-- [ ] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
+- [x] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
 - [x] Porsiyona göre miktar ölçekleme
 - [ ] Kullanıcı hesapları (Supabase Auth ile çok kullanıcılı yapı)
 - [ ] Tarif görselleri (Supabase Storage)
@@ -63,7 +63,8 @@ buzdolabi-asistani/
 │   │   ├── ingredients.py
 │   │   ├── pantry.py
 │   │   ├── recipes.py
-│   │   └── shopping.py
+│   │   ├── shopping.py
+│   │   └── tags.py
 │   ├── services/
 │   │   └── matching.py      # Eşleştirme algoritması
 │   └── utils/
@@ -83,6 +84,9 @@ buzdolabi-asistani/
 │       ├── recipes.js
 │       ├── scale.js         # Porsiyon ölçekleme için saf yardımcılar (Node ile test edilir)
 │       ├── recipe.js        # Tarif detay sayfası
+│       ├── filter-bar.js    # Ana sayfadaki etiket / süre filtre çubuğu
+│       ├── tags.js          # Etiket ve filtre yardımcıları (saf; Node ile test edilir)
+│       ├── text.js          # fold(): sunucudaki normalize() ile aynı kural
 │       └── recipe-form.js
 ├── migrations/              # Alembic migration dosyaları
 │   ├── env.py
@@ -142,6 +146,12 @@ quantity       (opsiyonel; tariften gelir, seçili porsiyona göre ölçeklenmi�
 unit           (opsiyonel)
 checked        bool          (satın alındı)
 added_at
+
+tags                        recipe_tags
+────                        ───────────
+id          PK              recipe_id  FK → recipes  ┐ birleşik PK
+name        UNIQUE (≤50)    tag_id     FK → tags     ┘ (index: tag_id)
+normalized  UNIQUE, index
 ```
 
 **Notlar:**
@@ -175,12 +185,12 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 ### Tarifler
 | Metot | Yol | Açıklama |
 |---|---|---|
-| GET | `/api/recipes?limit=20&offset=0` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100, `offset` ≥ 0 |
+| GET | `/api/recipes?limit=20&offset=0&tag=kahvaltı&max_minutes=30` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100, `offset` ≥ 0. Filtreler için aşağıdaki "Etiketler ve filtreler" bölümüne bak |
 | GET | `/api/recipes/{id}` | Tarif detayı. Her malzemede `in_pantry` alanı vardır (buzdolabında var ya da temel malzeme) |
-| POST | `/api/recipes` | Tarif ekle. Malzemeler ad ile gönderilir (`{name, quantity, unit, is_optional}`); ad normalize edilip mevcut malzemeyle eşleşir, yoksa oluşturulur. En az 1 malzeme gerekir, aynı malzeme iki kez eklenemez (400) |
+| POST | `/api/recipes` | Tarif ekle. Malzemeler ad ile gönderilir (`{name, quantity, unit, is_optional}`); ad normalize edilip mevcut malzemeyle eşleşir, yoksa oluşturulur. En az 1 malzeme gerekir, aynı malzeme iki kez eklenemez (400). `tags`: isteğe bağlı etiket adları listesi (en çok 10, her biri en çok 50 karakter); boşlar atılır, `normalize()` ile aynı olanlar tek bırakılır, yoksa etiket oluşturulur. Yanıtta `tags` bulunur |
 | PUT | `/api/recipes/{id}` | Tarif güncelle (gövde POST ile aynı; malzeme listesi tamamen değiştirilir) |
 | DELETE | `/api/recipes/{id}` | Tarif sil (malzeme satırları da silinir, malzeme kataloğu korunur) |
-| GET | `/api/recipes/match?max_missing=2` | Buzdolabındaki malzemelere göre eşleşen tarifler |
+| GET | `/api/recipes/match?max_missing=2&tag=kahvaltı&max_minutes=30` | Buzdolabındaki malzemelere göre eşleşen tarifler (filtreler isteğe bağlı) |
 
 ### Alışveriş listesi
 | Metot | Yol | Açıklama |
@@ -202,6 +212,18 @@ Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/
 - Frontend anahtarı koda gömmez: sunucu 401 dönünce `api.js` bir kez sorar ve o tarayıcının `localStorage`'ında saklar. Yanlış anahtar girilirse yeniden sorulur.
 - Sınırlar: tek paylaşılan anahtardır, hız sınırı yoktur; bu yüzden uzun ve rastgele olmalıdır. Hesaplı çok kullanıcılı yapı için Supabase Auth gerekir (sonraki adımlar).
 
+### Etiketler ve filtreler
+| Metot | Yol | Açıklama |
+|---|---|---|
+| GET | `/api/tags` | Filtre çubuğu için: **en az bir tarifte kullanılan** etiketler ve tarif sayıları `[{name, count}]` (ada göre sıralı). Etiketler ayrı bir uç noktayla oluşturulmaz; tarif eklenirken/güncellenirken oluşur |
+
+`GET /api/recipes` ve `GET /api/recipes/match` aynı filtreleri alır:
+- `tag` (tekrarlanabilir, en çok 10): seçilen etiketlerin **hepsine** sahip tarifler (VE). Ad `normalize()` ile karşılaştırılır ("Kahvaltı" = "kahvalti"); bilinmeyen etiket sonucu boşaltır.
+- `max_minutes` (0–10000): hazırlık süresi bu değerden uzun olmayanlar. Süresi girilmemiş tarifler bu filtreyle elenir. Arayüzdeki "⏱ 30 dk altı" düğmesi `max_minutes=30` gönderir; "30 dk altı" bir etiket değil, süreden türetilen filtredir.
+- Filtreler eşleştirmeden **önce** uygulanır; sıralama kuralları değişmez.
+
+Tarif silinince etiket bağlantıları silinir, etiket kaydı kalır; kullanılmayan etiket `/api/tags` listesinde görünmez. Tarifler etiketsiz olabilir.
+
 ### Sağlık kontrolü
 | Metot | Yol | Açıklama |
 |---|---|---|
@@ -217,6 +239,7 @@ Uygulama tek kullanıcılı olduğu için tüm **yazma** uç noktaları (`POST`/
     "have": ["yumurta", "domates", "biber", "tereyağı"],
     "missing": ["soğan"],
     "expiring": ["yumurta"],
+    "tags": ["kahvaltı", "vejetaryen"],
     "prep_minutes": 15
   }
 ]
@@ -321,7 +344,8 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 - Üstte malzeme arama kutusu (yazdıkça `/api/ingredients?q=` çağrılır, 250 ms debounce)
 - Arama kutusunun altında isteğe bağlı "Son kullanma tarihi" alanı: önce tarih seçilirse sonraki eklenen malzemeye uygulanır
 - Seçilen malzemeler "etiket" (chip) olarak görünür, × ile silinir. Tarihi olanlar önce, en yakın bitenden başlayarak sıralanır; rozet "yarın bitiyor", "2 gün kaldı", "1 gün önce bitti" gibi gösterir (≤3 gün turuncu, geçmiş kırmızı). Rozete tıklayınca tarih düzenlenir; alanı boşaltmak tarihi siler
-- Altta önerilen tarif kartları: başlık, süre, eşleşme oranı çubuğu, eksik malzemeler; yakında bozulacak malzeme kullanılıyorsa "⏰ Yakında bozulacak: …" satırı ve vurgulu kenarlık
+- **Filtre çubuğu** (öneri listesinin üstünde): "⏱ 30 dk altı" ve her etiket için sayılı düğme (`kahvaltı (2)`); birden çok etiket seçilirse hepsine sahip tarifler gösterilir. Seçim sayfa adresine yazılır (`/?tag=kahvaltı&max_minutes=30`), bağlantı paylaşılabilir; adresteki listede olmayan etiket de görünür ve kaldırılabilir. "Filtreleri temizle" bağlantısı vardır
+- Altta önerilen tarif kartları: başlık, süre, etiketler, eşleşme oranı çubuğu, eksik malzemeler; yakında bozulacak malzeme kullanılıyorsa "⏰ Yakında bozulacak: …" satırı ve vurgulu kenarlık
 - "Sadece hemen yapılabilenler" anahtarı (`max_missing=0`)
 
 ### `recipe.html?id=7` – Tarif detay
@@ -337,7 +361,7 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 - Boş listede açıklama ve ana sayfaya bağlantı. Ana sayfa ve tarif sayfasında bu sayfaya bağlantı vardır
 
 ### `recipe-form.html` – Tarif ekle / düzenle
-- Başlık, açıklama, süre, porsiyon
+- Başlık, açıklama, **etiketler** (virgülle ayrılmış metin alanı; altında mevcut etiketler tek tıkla ekleyip çıkarmak için düğmeler), süre, porsiyon
 - Dinamik malzeme satırları (malzeme + miktar + birim + opsiyonel kutusu)
 - Adımlar için metin alanı
 
@@ -470,7 +494,7 @@ __pycache__/
 4. Deploy. Sonraki her `git push` otomatik yeni sürüm yayınlar.
 
 ### Yeni migration içeren sürümler
-Vercel her `git push`'ta otomatik deploy eder; kod yeni bir tabloya erişiyorsa ve tablo henüz yoksa o uç noktalar 500 verir. Bu yüzden sıra şöyledir: (1) yerelde `pytest` ve gerekirse `TEST_DATABASE_URL` ile Postgres testleri, (2) **yayın veritabanında `alembic upgrade head`** (session pooler, `.env`'deki `DATABASE_URL` ile; geri alınamaz işlem olduğundan önce onay), (3) Supabase'te RLS ve Advisors kontrolü, (4) `git push`. Eski kod yeni tabloyu kullanmadığından migration'ı önce uygulamak güvenlidir.
+Vercel her `git push`'ta otomatik deploy eder; kod yeni bir tabloya erişiyorsa ve tablo henüz yoksa o uç noktalar 500 verir. Bu yüzden sıra şöyledir: (1) yerelde `pytest` ve gerekirse `TEST_DATABASE_URL` ile Postgres testleri, (2) **yayın veritabanında `alembic upgrade head`** (session pooler, `.env`'deki `DATABASE_URL` ile; geri alınamaz işlem olduğundan önce onay), (3) Supabase'te RLS ve Advisors kontrolü, (4) `git push`. Eski kod yeni tabloyu kullanmadığından migration'ı önce uygulamak güvenlidir. Sürüm yeni seed verisi getiriyorsa (örn. etiketler) `python scripts/seed.py` yayın veritabanında da çalıştırılır: var olan tarif ve malzemeleri değiştirmez, yalnızca hiç etiketi olmayan seed tariflerine etiket ekler (kullanıcının verdiği etiketlere dokunmaz). Kendi eklediğin tariflere etiketi tarif formundan verirsin.
 
 ### Deploy sonrası kontrol listesi
 - [ ] `https://<proje>.vercel.app/api/health` → veritabanı bağlantısı OK
@@ -492,6 +516,7 @@ Vercel her `git push`'ta otomatik deploy eder; kod yeni bir tabloya erişiyorsa 
     "description": "Klasik Türk kahvaltısı.",
     "prep_minutes": 15,
     "servings": 2,
+    "tags": ["kahvaltı", "vejetaryen"],
     "ingredients": [
       { "name": "Yumurta", "quantity": 3, "unit": "adet" },
       { "name": "Domates", "quantity": 2, "unit": "adet" },

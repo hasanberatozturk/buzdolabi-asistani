@@ -16,6 +16,7 @@ class RecipeCandidate:
     prep_minutes: int | None
     # Sadece zorunlu malzemeler: (ingredient_id, ad)
     required: tuple[tuple[int, str], ...]
+    tags: tuple[str, ...] = ()  # eşleştirmeyi etkilemez; sonuçta kartta gösterilir
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class MatchResult:
     missing: list[str]
     expiring: list[str]
     prep_minutes: int | None
+    tags: list[str]
 
 
 def match_recipes(
@@ -65,6 +67,7 @@ def match_recipes(
                 missing=missing,
                 expiring=expiring,
                 prep_minutes=recipe.prep_minutes,
+                tags=list(recipe.tags),
             )
         )
 

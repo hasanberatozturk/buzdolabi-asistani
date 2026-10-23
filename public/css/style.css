@@ -528,6 +528,63 @@ textarea:focus-visible {
   }
 }
 
+/* Etiketler ve filtreler */
+.filter-bar,
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.filter-chip {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.8rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.filter-chip[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.filter-bar .link-button {
+  margin-top: 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.tag {
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--chip-bg);
+  border-radius: 999px;
+}
+
+.tag:hover {
+  text-decoration: underline;
+}
+
+.card-tags {
+  font-size: 0.85rem;
+}
+
 /* Alışveriş listesi */
 .header-actions {
   display: flex;

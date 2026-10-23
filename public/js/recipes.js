@@ -1,12 +1,14 @@
 import * as api from "./api.js";
 import { clear, el } from "./dom.js";
+import { hasActiveFilters } from "./tags.js";
 
-export function initRecipes() {
+export function initRecipes({ filters: initialFilters = { tags: [], maxMinutes: null } } = {}) {
   const list = document.querySelector("#recipe-list");
   const status = document.querySelector("#recipe-status");
   const onlyReady = document.querySelector("#only-ready");
 
   let pantryCount = 0;
+  let filters = initialFilters;
   let seq = 0;
 
   function setStatus(message, isError = false) {
@@ -29,6 +31,7 @@ export function initRecipes() {
       { class: match.expiring.length ? "card has-expiring" : "card" },
       el("h3", {}, el("a", { href: `/recipe.html?id=${match.recipe_id}` }, match.title)),
       match.prep_minutes != null && el("p", { class: "muted" }, `⏱ ${match.prep_minutes} dk`),
+      match.tags.length > 0 && el("p", { class: "muted card-tags" }, match.tags.join(" · ")),
       el(
         "div",
         { class: "bar", role: "img", "aria-label": `%${percent} eşleşme` },
@@ -53,11 +56,15 @@ export function initRecipes() {
     }
     renderSkeleton();
     try {
-      const matches = await api.matchRecipes(onlyReady.checked ? 0 : 2);
+      const matches = await api.matchRecipes(onlyReady.checked ? 0 : 2, filters);
       if (current !== seq) return;
       clear(list);
       if (matches.length === 0) {
-        setStatus("Bu malzemelerle yapılabilecek tarif bulunamadı. Biraz daha malzeme eklemeyi dene.");
+        setStatus(
+          hasActiveFilters(filters)
+            ? "Bu malzemeler ve seçtiğin filtrelerle yapılabilecek tarif bulunamadı. Filtreleri değiştirmeyi dene."
+            : "Bu malzemelerle yapılabilecek tarif bulunamadı. Biraz daha malzeme eklemeyi dene.",
+        );
         return;
       }
       list.append(...matches.map(renderCard));
@@ -73,6 +80,10 @@ export function initRecipes() {
   return {
     update(count) {
       pantryCount = count;
+      return refresh();
+    },
+    setFilters(next) {
+      filters = next;
       return refresh();
     },
   };

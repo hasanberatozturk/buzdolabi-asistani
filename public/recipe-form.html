@@ -27,6 +27,12 @@
           <textarea id="description" rows="2"></textarea>
         </label>
 
+        <label class="field">
+          <span>Etiketler <small class="muted">(virgülle ayır, en çok 10; ör. kahvaltı, vegan)</small></span>
+          <input id="tags" type="text" maxlength="600" autocomplete="off" />
+        </label>
+        <div id="tag-suggestions" class="tag-suggestions" role="group" aria-label="Mevcut etiketler" hidden></div>
+
         <div class="field-row">
           <label class="field">
             <span>Süre (dk)</span>

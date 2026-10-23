@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.routers import ingredients, pantry, recipes, shopping
+from app.routers import ingredients, pantry, recipes, shopping, tags
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ app.include_router(ingredients.router)
 app.include_router(pantry.router)
 app.include_router(recipes.router)
 app.include_router(shopping.router)
+app.include_router(tags.router)
 
 
 @app.get("/api/health")

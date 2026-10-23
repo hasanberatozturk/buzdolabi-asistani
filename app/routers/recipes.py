@@ -1,20 +1,22 @@
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
-from app.models import PantryItem, Recipe, RecipeIngredient
+from app.models import PantryItem, Recipe, RecipeIngredient, Tag, recipe_tags
 from app.schemas import (
     MAX_ID,
+    MAX_TAGS_PER_RECIPE,
     RecipeDetail,
     RecipeIn,
     RecipeIngredientOut,
     RecipeListItem,
     RecipeMatchOut,
     RecipePage,
+    TagName,
 )
 from app.security import require_api_key
 from app.services import expiry
@@ -25,19 +27,53 @@ from app.services.matching import (
     RecipeCandidate,
     match_recipes,
 )
+from app.services.tags import clean_tags, get_or_create_tag
 from app.utils.text import normalize
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
+
+
+def _recipe_filters(tags: list[str], max_minutes: int | None) -> list[ColumnElement[bool]]:
+    """Liste ve eşleştirme uç noktalarının ortak filtreleri.
+
+    - `tags`: **hepsine** sahip tarifler (VE). Ad `normalize()` ile karşılaştırılır; bilinmeyen
+      etiket sonucu boşaltır.
+    - `max_minutes`: hazırlık süresi bu değerden uzun olmayanlar; süresi girilmemiş tarifler elenir.
+    """
+    filters: list[ColumnElement[bool]] = []
+    wanted = {key for key in (normalize(name) for name in tags) if key}
+    if wanted:
+        having_all = (
+            select(recipe_tags.c.recipe_id)
+            .join(Tag, Tag.id == recipe_tags.c.tag_id)
+            .where(Tag.normalized.in_(wanted))
+            .group_by(recipe_tags.c.recipe_id)
+            .having(func.count(Tag.id) == len(wanted))
+        )
+        filters.append(Recipe.id.in_(having_all))
+    if max_minutes is not None:
+        filters.append(Recipe.prep_minutes <= max_minutes)
+    return filters
 
 
 @router.get("", response_model=RecipePage)
 def list_recipes(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0, le=MAX_ID),
+    tag: list[TagName] = Query(default=[], max_length=MAX_TAGS_PER_RECIPE),
+    max_minutes: int | None = Query(None, ge=0, le=10000),
     db: Session = Depends(get_db),
 ) -> RecipePage:
-    total = db.scalar(select(func.count(Recipe.id))) or 0
-    recipes = db.scalars(select(Recipe).order_by(Recipe.id).limit(limit).offset(offset))
+    filters = _recipe_filters(tag, max_minutes)
+    total = db.scalar(select(func.count(Recipe.id)).where(*filters)) or 0
+    recipes = db.scalars(
+        select(Recipe)
+        .where(*filters)
+        .options(selectinload(Recipe.tags))
+        .order_by(Recipe.id)
+        .limit(limit)
+        .offset(offset)
+    )
     return RecipePage(
         items=[RecipeListItem.model_validate(recipe) for recipe in recipes],
         total=total,
@@ -50,6 +86,8 @@ def list_recipes(
 @router.get("/match", response_model=list[RecipeMatchOut])
 def match(
     max_missing: int = Query(2, ge=0, le=20),
+    tag: list[TagName] = Query(default=[], max_length=MAX_TAGS_PER_RECIPE),
+    max_minutes: int | None = Query(None, ge=0, le=10000),
     db: Session = Depends(get_db),
 ) -> list[MatchResult]:
     pantry_rows = db.execute(select(PantryItem.ingredient_id, PantryItem.expires_at)).all()
@@ -64,8 +102,11 @@ def match(
     }
 
     recipes = db.scalars(
-        select(Recipe).options(
-            selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient)
+        select(Recipe)
+        .where(*_recipe_filters(tag, max_minutes))
+        .options(
+            selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient),
+            selectinload(Recipe.tags),
         )
     )
     candidates = [
@@ -78,6 +119,7 @@ def match(
                 for row in sorted(recipe.ingredients, key=lambda r: r.id)
                 if not row.is_optional and row.ingredient.normalized not in STAPLE_INGREDIENTS
             ),
+            tags=tuple(t.name for t in recipe.tags),
         )
         for recipe in recipes
     ]
@@ -88,7 +130,10 @@ def _load_recipe(db: Session, recipe_id: int) -> Recipe:
     recipe = db.scalar(
         select(Recipe)
         .where(Recipe.id == recipe_id)
-        .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
+        .options(
+            selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient),
+            selectinload(Recipe.tags),
+        )
     )
     if recipe is None:
         raise HTTPException(status_code=404, detail="Tarif bulunamadı.")
@@ -152,6 +197,7 @@ def create_recipe(payload: RecipeIn, db: Session = Depends(get_db)) -> RecipeDet
         recipe = Recipe()
         _apply_fields(recipe, payload)
         recipe.ingredients = _build_ingredients(db, payload)
+        recipe.tags = [get_or_create_tag(db, name) for name in clean_tags(payload.tags)]
         db.add(recipe)
         return recipe
 
@@ -171,6 +217,7 @@ def update_recipe(
         recipe = _load_recipe(db, recipe_id)
         _apply_fields(recipe, payload)
         recipe.ingredients = _build_ingredients(db, payload)  # eskiler delete-orphan ile silinir
+        recipe.tags = [get_or_create_tag(db, name) for name in clean_tags(payload.tags)]
         return recipe
 
     _commit_retrying_on_conflict(db, work)
@@ -216,4 +263,5 @@ def _to_detail(db: Session, recipe: Recipe) -> RecipeDetail:
             )
             for row in sorted(recipe.ingredients, key=lambda r: r.id)
         ],
+        tags=[tag.name for tag in recipe.tags],
     )

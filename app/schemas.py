@@ -11,6 +11,12 @@ RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_lengt
 MAX_ID = 2**31 - 1
 
 
+# Tarif başına etiket sayısı ve etiket uzunluğu (tags.name sütunu String(50)); form alanı da buna uyar
+MAX_TAGS_PER_RECIPE = 10
+MAX_TAG_LENGTH = 50
+TagName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_TAG_LENGTH)]
+
+
 class IngredientCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
@@ -45,6 +51,7 @@ class RecipeMatchOut(BaseModel):
     missing: list[str]
     expiring: list[str]  # `have` içinden, yakında bozulacak (veya süresi geçmiş) malzemeler
     prep_minutes: int | None
+    tags: list[str]
 
 
 class RecipeIngredientIn(BaseModel):
@@ -67,6 +74,8 @@ class RecipeIn(BaseModel):
     servings: int | None = Field(default=None, ge=1, le=1000)
     image_url: str | None = Field(default=None, max_length=500)
     ingredients: list[RecipeIngredientIn] = Field(min_length=1, max_length=50)
+    # Boşlar atılır, normalize edilmiş hâlde tekrar edenler tek bırakılır (services/tags.py::clean_tags)
+    tags: list[TagName] = Field(default_factory=list, max_length=MAX_TAGS_PER_RECIPE)
 
     @field_validator("description")
     @classmethod
@@ -93,6 +102,13 @@ class RecipeListItem(BaseModel):
     prep_minutes: int | None
     servings: int | None
     image_url: str | None
+    tags: list[str]
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def tag_names(cls, value):
+        # ORM'den gelen Tag nesnelerini ada çevirir
+        return [getattr(tag, "name", tag) for tag in value]
 
 
 class RecipePage(BaseModel):
@@ -121,6 +137,12 @@ class RecipeDetail(BaseModel):
     image_url: str | None
     created_at: datetime
     ingredients: list[RecipeIngredientOut]
+    tags: list[str]
+
+
+class TagCount(BaseModel):
+    name: str
+    count: int  # bu etiketi taşıyan tarif sayısı
 
 
 class PantryItemOut(BaseModel):

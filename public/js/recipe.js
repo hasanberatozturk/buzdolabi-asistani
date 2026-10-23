@@ -166,6 +166,17 @@ function renderRecipe(recipe) {
         .filter(Boolean)
         .join(" · "),
     ),
+    ...(recipe.tags.length > 0
+      ? [
+          el(
+            "p",
+            { class: "tags" },
+            recipe.tags.map((tag) =>
+              el("a", { class: "tag", href: `/?tag=${encodeURIComponent(tag)}`, title: `“${tag}” etiketli tarifleri öner` }, tag),
+            ),
+          ),
+        ]
+      : []),
     ...(recipe.description ? [el("p", {}, recipe.description)] : []),
 
     el("h3", {}, "Malzemeler"),

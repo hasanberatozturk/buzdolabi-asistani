@@ -1,11 +1,10 @@
 import * as api from "./api.js";
 import { clear, el } from "./dom.js";
+import { fold } from "./text.js";
 
 const SEARCH_DELAY_MS = 250;
 const EXPIRY_SOON_DAYS = 3; // sunucudaki app/services/expiry.py::EXPIRY_SOON_DAYS ile aynı olmalı
 
-// Sunucudaki normalize() ile aynı kural (app/utils/text.py): İ/I/ı → i, küçük harf, tek boşluk.
-const fold = (text) => text.trim().replace(/[İIı]/g, "i").toLowerCase().replace(/\s+/g, " ");
 
 export function initPantry({ onChange }) {
   const input = document.querySelector("#ingredient-search");
