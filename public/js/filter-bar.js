@@ -6,14 +6,24 @@ import { QUICK_MINUTES, filtersToSearch, hasActiveFilters, hasTag, toggleTag } f
 // Seçim sayfa adresine yazılır (?tag=kahvaltı&max_minutes=30), böylece bağlantı paylaşılabilir.
 export function initFilterBar({ initial, onChange }) {
   const bar = document.querySelector("#filter-bar");
-  let filters = { tags: [...initial.tags], maxMinutes: initial.maxMinutes };
+  const viewSwitch = document.querySelector("#view-switch");
+  let filters = { tags: [...initial.tags], maxMinutes: initial.maxMinutes, view: initial.view };
   let available = []; // [{ name, count }]
 
   function chip(label, pressed, onClick) {
     return el("button", { type: "button", class: "filter-chip", "aria-pressed": String(pressed), onclick: onClick }, label);
   }
 
+  function renderViewSwitch() {
+    clear(viewSwitch);
+    viewSwitch.append(
+      chip("Buzdolabıma göre", filters.view !== "all", () => apply({ ...filters, view: "match" })),
+      chip("Tüm tarifler", filters.view === "all", () => apply({ ...filters, view: "all" })),
+    );
+  }
+
   function render() {
+    renderViewSwitch();
     clear(bar);
     const minutes = filters.maxMinutes;
     bar.append(
@@ -28,7 +38,7 @@ export function initFilterBar({ initial, onChange }) {
       bar.append(chip(label, hasTag(filters.tags, tag.name), () => apply({ ...filters, tags: toggleTag(filters.tags, tag.name) })));
     }
     if (hasActiveFilters(filters)) {
-      bar.append(el("button", { type: "button", class: "link-button", onclick: () => apply({ tags: [], maxMinutes: null }) }, "Filtreleri temizle"));
+      bar.append(el("button", { type: "button", class: "link-button", onclick: () => apply({ tags: [], maxMinutes: null, view: filters.view }) }, "Filtreleri temizle"));
     }
   }
 

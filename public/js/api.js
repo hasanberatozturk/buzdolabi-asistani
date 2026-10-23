@@ -1,4 +1,4 @@
-import { buildMatchQuery } from "./tags.js";
+import { buildListQuery, buildMatchQuery } from "./tags.js";
 
 // Tüm fetch çağrıları sadece bu dosyada; diğer dosyalar bu fonksiyonları kullanır.
 
@@ -148,6 +148,11 @@ export function moveShoppingToPantry() {
 // filters: { tags: ["kahvaltı"], maxMinutes: 30 } (ikisi de isteğe bağlı; etiketlerin hepsi aranır)
 export function matchRecipes(maxMissing, filters = {}) {
   return request(`/api/recipes/match?${buildMatchQuery({ maxMissing, ...filters })}`);
+}
+
+// Tüm tarifler (sayfalı): { limit, offset, tags, maxMinutes } → { items, total, limit, offset }
+export function getRecipes(options) {
+  return request(`/api/recipes?${buildListQuery(options)}`);
 }
 
 export function getTags() {

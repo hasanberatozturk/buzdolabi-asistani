@@ -37,6 +37,11 @@
   box-sizing: border-box;
 }
 
+/* `display` veren kurallar (ör. .switch, .actions) tarayıcının [hidden] gizlemesini ezmesin */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -583,6 +588,42 @@ textarea:focus-visible {
 
 .card-tags {
   font-size: 0.85rem;
+}
+
+.card-desc {
+  display: -webkit-box;
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+#recipe-more {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: var(--space);
+}
+
+#recipe-more[hidden] {
+  display: none;
+}
+
+.card-desc {
+  display: -webkit-box;
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+#recipe-more {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: var(--space);
+}
+
+#recipe-more[hidden] {
+  display: none;
 }
 
 /* Alışveriş listesi */

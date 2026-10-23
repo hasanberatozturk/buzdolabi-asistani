@@ -344,7 +344,8 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 - Üstte malzeme arama kutusu (yazdıkça `/api/ingredients?q=` çağrılır, 250 ms debounce)
 - Arama kutusunun altında isteğe bağlı "Son kullanma tarihi" alanı: önce tarih seçilirse sonraki eklenen malzemeye uygulanır
 - Seçilen malzemeler "etiket" (chip) olarak görünür, × ile silinir. Tarihi olanlar önce, en yakın bitenden başlayarak sıralanır; rozet "yarın bitiyor", "2 gün kaldı", "1 gün önce bitti" gibi gösterir (≤3 gün turuncu, geçmiş kırmızı). Rozete tıklayınca tarih düzenlenir; alanı boşaltmak tarihi siler
-- **Filtre çubuğu** (öneri listesinin üstünde): "⏱ 30 dk altı" ve her etiket için sayılı düğme (`kahvaltı (2)`); birden çok etiket seçilirse hepsine sahip tarifler gösterilir. Seçim sayfa adresine yazılır (`/?tag=kahvaltı&max_minutes=30`), bağlantı paylaşılabilir; adresteki listede olmayan etiket de görünür ve kaldırılabilir. "Filtreleri temizle" bağlantısı vardır
+- **Görünüm anahtarı**: "Buzdolabıma göre" (öneriler, varsayılan) ve **"Tüm tarifler"** (buzdolabından bağımsız, her seferinde 12 tarif; "Daha fazla göster" ile sürer, "12 / 18 tarif" sayacı vardır). Seçim adrese `view=all` olarak yazılır. Tüm tarifler görünümünde "Sadece hemen yapılabilenler" kutusu gizlenir; etiket ve süre filtreleri iki görünümde de çalışır
+- **Filtre çubuğu** (öneri listesinin üstünde): "⏱ 30 dk altı" ve her etiket için sayılı düğme (`kahvaltı (2)`); birden çok etiket seçilirse hepsine sahip tarifler gösterilir. Seçim sayfa adresine yazılır (`/?tag=kahvaltı&max_minutes=30`, tüm tarifler için `&view=all`), bağlantı paylaşılabilir; adresteki listede olmayan etiket de görünür ve kaldırılabilir. "Filtreleri temizle" bağlantısı vardır
 - Altta önerilen tarif kartları: başlık, süre, etiketler, eşleşme oranı çubuğu, eksik malzemeler; yakında bozulacak malzeme kullanılıyorsa "⏰ Yakında bozulacak: …" satırı ve vurgulu kenarlık
 - "Sadece hemen yapılabilenler" anahtarı (`max_missing=0`)
 

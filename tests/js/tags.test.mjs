@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   MAX_TAGS,
+  buildListQuery,
   buildMatchQuery,
   filtersToSearch,
   hasActiveFilters,
@@ -66,8 +67,8 @@ test("buildMatchQuery özel karakterleri sorguyu bozmayacak biçimde kodlar", ()
 });
 
 test("parseFilterParams adresten etiket ve süreyi okur", () => {
-  assert.deepEqual(parseFilterParams("?tag=kahvalt%C4%B1&tag=vegan&max_minutes=30"), { tags: ["kahvaltı", "vegan"], maxMinutes: 30 });
-  assert.deepEqual(parseFilterParams(""), { tags: [], maxMinutes: null });
+  assert.deepEqual(parseFilterParams("?tag=kahvalt%C4%B1&tag=vegan&max_minutes=30"), { tags: ["kahvaltı", "vegan"], maxMinutes: 30, view: "match" });
+  assert.deepEqual(parseFilterParams(""), { tags: [], maxMinutes: null, view: "match" });
 });
 
 test("parseFilterParams geçersiz değerleri yok sayar", () => {
@@ -86,9 +87,27 @@ test("parseFilterParams tekrar edenleri ve fazlalığı sınırlar", () => {
 });
 
 test("filtersToSearch ve parseFilterParams birbirinin tersidir", () => {
-  const filters = { tags: ["ana yemek", "çorba"], maxMinutes: 30 };
-  assert.deepEqual(parseFilterParams(filtersToSearch(filters)), filters);
+  for (const view of ["match", "all"]) {
+    const filters = { tags: ["ana yemek", "çorba"], maxMinutes: 30, view };
+    assert.deepEqual(parseFilterParams(filtersToSearch(filters)), filters);
+  }
+  assert.equal(filtersToSearch({ tags: [], maxMinutes: null, view: "match" }), "");
   assert.equal(filtersToSearch({ tags: [], maxMinutes: null }), "");
+});
+
+test("view parametresi yalnızca all değerini kabul eder", () => {
+  assert.equal(parseFilterParams("?view=all").view, "all");
+  for (const bad of ["?view=ALL", "?view=match", "?view=", "?view=<script>", ""]) {
+    assert.equal(parseFilterParams(bad).view, "match", bad);
+  }
+  assert.equal(filtersToSearch({ tags: [], maxMinutes: null, view: "all" }), "?view=all");
+});
+
+test("buildListQuery sayfalama ve filtreleri kodlar", () => {
+  assert.equal(buildListQuery({ limit: 12 }), "limit=12&offset=0");
+  assert.equal(buildListQuery({ limit: 12, offset: 24, tags: ["ana yemek"], maxMinutes: 30 }), "limit=12&offset=24&tag=ana+yemek&max_minutes=30");
+  const parsed = new URLSearchParams(buildListQuery({ limit: 5, tags: ["a&b=c"] }));
+  assert.deepEqual(parsed.getAll("tag"), ["a&b=c"]);
 });
 
 test("hasActiveFilters", () => {

@@ -43,7 +43,16 @@ export function buildMatchQuery({ maxMissing, tags = [], maxMinutes = null }) {
   return params.toString();
 }
 
-// Sayfa adresindeki filtreler: ?tag=kahvaltı&tag=vegan&max_minutes=30 (geçersizler yok sayılır)
+// Tüm tarifler görünümü için liste sorgusu: /api/recipes?limit=12&offset=0&tag=a&max_minutes=30
+export function buildListQuery({ limit, offset = 0, tags = [], maxMinutes = null }) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  for (const tag of tags) params.append("tag", tag);
+  if (maxMinutes != null) params.set("max_minutes", String(maxMinutes));
+  return params.toString();
+}
+
+// Sayfa adresindeki filtreler: ?tag=kahvaltı&tag=vegan&max_minutes=30&view=all (geçersizler yok sayılır).
+// view: "match" (buzdolabına göre öneriler, varsayılan) ya da "all" (tüm tarifler).
 export function parseFilterParams(search) {
   const params = new URLSearchParams(search);
   const tags = [];
@@ -53,12 +62,14 @@ export function parseFilterParams(search) {
   }
   const minutes = params.get("max_minutes");
   const maxMinutes = minutes !== null && /^\d{1,5}$/.test(minutes) && Number(minutes) <= 10000 ? Number(minutes) : null;
-  return { tags: tags.slice(0, MAX_TAGS), maxMinutes };
+  const view = params.get("view") === "all" ? "all" : "match";
+  return { tags: tags.slice(0, MAX_TAGS), maxMinutes, view };
 }
 
 // Filtreleri sayfa adresine yazar (paylaşılabilir bağlantı); filtre yoksa sorgu dizesi boş kalır.
-export function filtersToSearch({ tags = [], maxMinutes = null }) {
+export function filtersToSearch({ tags = [], maxMinutes = null, view = "match" }) {
   const params = new URLSearchParams();
+  if (view === "all") params.set("view", "all");
   for (const tag of tags) params.append("tag", tag);
   if (maxMinutes != null) params.set("max_minutes", String(maxMinutes));
   const text = params.toString();

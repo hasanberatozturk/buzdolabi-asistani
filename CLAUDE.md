@@ -89,6 +89,7 @@ tests/
 - ES modülleri (`<script type="module">`). Kütüphane veya CDN bağımlılığı ekleme.
 - Tüm `fetch` çağrıları sadece `public/js/api.js` içinde; diğer dosyalar bu fonksiyonları kullanır.
 - Hesaplama/biçimlendirme gibi saf mantık DOM'dan ayrı, test edilebilir modüllerde durur (örn. `scale.js`) ve `tests/js/` altında Node testi olur. Sunucudaki bir sınırı yansıtan sabitler (örn. `MAX_SERVINGS`) için `tests/test_js.py`'deki gibi eşitlik testi eklenir.
+- `hidden` özniteliği `style.css` başındaki global `[hidden] { display: none !important }` kuralına dayanır (yoksa `display: flex` veren sınıflar gizlenen öğeyi gösterir); öğeleri `el.hidden = true` ile gizle.
 - Her zaman göreli yol: `fetch("/api/recipes")`. Tam URL veya `localhost` yazma.
 - Her API çağrısında yükleniyor durumu ve hata mesajı göster (soğuk başlatma gecikebilir).
 - Renkler ve aralıklar `:root` içinde CSS değişkenleri; açık/koyu mod `prefers-color-scheme` ile. Mobil öncelikli.
