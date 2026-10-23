@@ -120,6 +120,7 @@ def match(
                 if not row.is_optional and row.ingredient.normalized not in STAPLE_INGREDIENTS
             ),
             tags=tuple(t.name for t in recipe.tags),
+            image_url=recipe.image_url,
         )
         for recipe in recipes
     ]

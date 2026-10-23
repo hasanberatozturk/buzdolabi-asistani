@@ -41,7 +41,7 @@ Kullanıcı buzdolabındaki / dolabındaki malzemeleri seçer. Uygulama veritaba
 - [x] Kategori / etiket filtreleri (vegan, kahvaltı, 30 dk altı...)
 - [x] Porsiyona göre miktar ölçekleme
 - [ ] Kullanıcı hesapları (Supabase Auth ile çok kullanıcılı yapı)
-- [ ] Tarif görselleri (Supabase Storage)
+- [x] Tarif görselleri (adres tabanlı: tarif formuna https görsel adresi girilir). Dosya yükleme (Supabase Storage) yapılmadı: bucket ve gizli anahtar gerektirir
 - [ ] Yapay zekâ ile tarif önerisi / malzeme ikamesi ("süt yoksa ne kullanabilirim?")
 
 ---
@@ -193,7 +193,7 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 |---|---|---|
 | GET | `/api/recipes?limit=20&offset=0&tag=kahvaltı&max_minutes=30` | Tüm tarifler (sayfalı). Yanıt: `{items, total, limit, offset}`; `limit` 1–100, `offset` ≥ 0. Filtreler için aşağıdaki "Etiketler ve filtreler" bölümüne bak |
 | GET | `/api/recipes/{id}` | Tarif detayı. Her malzemede `in_pantry` alanı vardır (buzdolabında var ya da temel malzeme) |
-| POST | `/api/recipes` | Tarif ekle. Malzemeler ad ile gönderilir (`{name, quantity, unit, is_optional}`); ad normalize edilip mevcut malzemeyle eşleşir, yoksa oluşturulur. En az 1 malzeme gerekir, aynı malzeme iki kez eklenemez (400). `tags`: isteğe bağlı etiket adları listesi (en çok 10, her biri en çok 50 karakter); boşlar atılır, `normalize()` ile aynı olanlar tek bırakılır, yoksa etiket oluşturulur. Yanıtta `tags` bulunur |
+| POST | `/api/recipes` | Tarif ekle (`image_url`: isteğe bağlı, yalnızca `https://` ile başlayan adres; `http://`, `javascript:`, `data:`, kullanıcı bilgisi içeren ya da boşluklu adresler 422 verir). Malzemeler ad ile gönderilir (`{name, quantity, unit, is_optional}`); ad normalize edilip mevcut malzemeyle eşleşir, yoksa oluşturulur. En az 1 malzeme gerekir, aynı malzeme iki kez eklenemez (400). `tags`: isteğe bağlı etiket adları listesi (en çok 10, her biri en çok 50 karakter); boşlar atılır, `normalize()` ile aynı olanlar tek bırakılır, yoksa etiket oluşturulur. Yanıtta `tags` bulunur |
 | PUT | `/api/recipes/{id}` | Tarif güncelle (gövde POST ile aynı; malzeme listesi tamamen değiştirilir) |
 | DELETE | `/api/recipes/{id}` | Tarif sil (malzeme satırları da silinir, malzeme kataloğu korunur) |
 | GET | `/api/recipes/match?max_missing=2&tag=kahvaltı&max_minutes=30` | Buzdolabındaki malzemelere göre eşleşen tarifler (filtreler isteğe bağlı) |
@@ -364,13 +364,15 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 - Numaralı yapılış adımları
 - Düzenle / Sil butonları
 
+- Tarifin `image_url` değeri varsa başlığın altında büyük görsel gösterilir (hemen yüklenir, 16:9 yer ayrılır, yüklenemezse kendini kaldırır). Ana sayfadaki kartlarda (öneriler ve tüm tarifler) küçük resim olarak görünür (tembel yüklenir)
+
 ### `shopping.html` – Alışveriş listesi
 - Her satırda onay kutusu (alındı işareti; işaretliler üstü çizili olarak alta iner) ve × ile silme
 - "Alınanları buzdolabına taşı", "Alınanları listeden sil", "Listeyi boşalt" (onay sorar) düğmeleri
 - Boş listede açıklama ve ana sayfaya bağlantı. Ana sayfa ve tarif sayfasında bu sayfaya bağlantı vardır
 
 ### `recipe-form.html` – Tarif ekle / düzenle
-- Başlık, açıklama, **etiketler** (virgülle ayrılmış metin alanı; altında mevcut etiketler tek tıkla ekleyip çıkarmak için düğmeler), süre, porsiyon
+- Başlık, açıklama, **görsel adresi** (isteğe bağlı; yalnızca `https://`, en çok 500 karakter, boşluk ve `kullanıcı@` içeremez; adres değişince önizleme gösterilir, yüklenemezse uyarı verilir ama kaydı engellemez), **etiketler** (virgülle ayrılmış metin alanı; altında mevcut etiketler tek tıkla ekleyip çıkarmak için düğmeler), süre, porsiyon
 - Dinamik malzeme satırları (malzeme + miktar + birim + opsiyonel kutusu)
 - Adımlar için metin alanı
 
@@ -378,11 +380,11 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 Tüm yollara `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` ve `Permissions-Policy` eklenir. HTML/JS/CSS yanıtlarına ayrıca şu CSP uygulanır (`/api/*`, `/docs`, `/redoc`, `/openapi.json` hariç, çünkü Swagger arayüzü CDN ve satır içi betik kullanır):
 
 ```
-default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;
+default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:;
 object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
-Bu yüzden frontend'de **satır içi `<script>`, `<style>`, `style=` / `on…=` öznitelikleri ve `setAttribute("style", …)` kullanılmaz**; genişlik gibi dinamik stiller `el.style.width = …` ile (CSSOM) verilir. `tests/test_frontend_csp.py` bunları denetler. Dışarıdan görsel (`image_url`) gösterilecekse `img-src`'ye ilgili alan adı eklenmelidir. HSTS'yi Vercel kendisi ekler.
+Bu yüzden frontend'de **satır içi `<script>`, `<style>`, `style=` / `on…=` öznitelikleri ve `setAttribute("style", …)` kullanılmaz**; genişlik gibi dinamik stiller `el.style.width = …` ile (CSSOM) verilir. `tests/test_frontend_csp.py` bunları denetler. Tarif görselleri başka sitelerden geldiği için yalnızca **`img-src`** `https:` kaynaklarına açıktır (`script-src`/`style-src` aynı kalır). Bunun bedeli: görseli barındıran site sayfayı görüntüleyenin IP adresini görür; bu yüzden görseller `referrerpolicy="no-referrer"` ile (hangi sayfadan geldiği söylenmeden) yüklenir. HSTS'yi Vercel kendisi ekler.
 
 **Tasarım:** Mobil öncelikli, CSS değişkenleriyle tema renkleri, açık/koyu mod desteği.
 **Kullanıcı deneyimi:** Sunucusuz fonksiyonlarda ilk istek (soğuk başlatma) biraz gecikebilir; bu yüzden listelerde yükleniyor göstergesi (skeleton) kullanılır.

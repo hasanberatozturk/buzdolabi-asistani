@@ -68,6 +68,8 @@ def test_csp_forbids_unsafe_inline_and_remote_sources():
     assert csp["default-src"] == ["'self'"]
     assert csp["script-src"] == ["'self'"]
     assert csp["style-src"] == ["'self'"]
+    # Tarif görselleri yalnızca https adreslerinden yüklenebilir; betik/stil kuralları gevşemez
+    assert csp["img-src"] == ["'self'", "data:", "https:"]
     assert csp["object-src"] == ["'none'"]
     assert csp["frame-ancestors"] == ["'none'"]
     for sources in csp.values():

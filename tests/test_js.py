@@ -44,3 +44,9 @@ def test_max_servings_matches_server_limit():
 def test_tag_limits_match_server_limits():
     assert js_constant("tags.js", "MAX_TAGS") == py_constant("MAX_TAGS_PER_RECIPE")
     assert js_constant("tags.js", "MAX_TAG_LENGTH") == py_constant("MAX_TAG_LENGTH")
+
+
+def test_image_url_length_limit_matches_server_limit():
+    server = int(re.search(r"image_url: str \| None = Field\(default=None, max_length=(\d+)\)", SCHEMAS.read_text(encoding="utf-8")).group(1))
+    assert js_constant("url.js", "MAX_IMAGE_URL_LENGTH") == server
+

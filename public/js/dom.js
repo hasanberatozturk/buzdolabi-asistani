@@ -17,3 +17,19 @@ export function el(tag, attrs = {}, ...children) {
 export function clear(node) {
   node.replaceChildren();
 }
+
+// Harici görsel: Referer göndermeden yüklenir, yüklenemezse kendini kaldırır (kırık görsel simgesi kalmaz).
+// lazy=false sayfanın üstündeki ana görseller içindir (tembel yükleme orada gecikme ve yer kayması yaratır).
+export function image(url, alt, className, { lazy = true } = {}) {
+  const img = el("img", {
+    src: url,
+    alt,
+    class: className,
+    loading: lazy ? "lazy" : "eager",
+    decoding: "async",
+    referrerpolicy: "no-referrer",
+  });
+  img.addEventListener("error", () => img.remove());
+  return img;
+}
+

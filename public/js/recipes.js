@@ -1,5 +1,5 @@
 import * as api from "./api.js";
-import { clear, el } from "./dom.js";
+import { clear, el, image } from "./dom.js";
 import { hasActiveFilters } from "./tags.js";
 
 const PAGE_SIZE = 12; // "Tüm tarifler" görünümünde her seferinde getirilen tarif sayısı
@@ -38,6 +38,7 @@ export function initRecipes({ filters: initialFilters = { tags: [], maxMinutes: 
     return el(
       "article",
       { class: match.expiring.length ? "card has-expiring" : "card" },
+      match.image_url && image(match.image_url, match.title, "card-image"),
       el("h3", {}, el("a", { href: `/recipe.html?id=${match.recipe_id}` }, match.title)),
       match.prep_minutes != null && el("p", { class: "muted" }, `⏱ ${match.prep_minutes} dk`),
       match.tags.length > 0 && el("p", { class: "muted card-tags" }, match.tags.join(" · ")),
@@ -62,6 +63,7 @@ export function initRecipes({ filters: initialFilters = { tags: [], maxMinutes: 
     return el(
       "article",
       { class: "card" },
+      item.image_url && image(item.image_url, item.title, "card-image"),
       el("h3", {}, el("a", { href: `/recipe.html?id=${item.id}` }, item.title)),
       meta && el("p", { class: "muted" }, meta),
       item.tags.length > 0 && el("p", { class: "muted card-tags" }, item.tags.join(" · ")),

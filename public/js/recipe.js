@@ -1,5 +1,5 @@
 import * as api from "./api.js";
-import { clear, el } from "./dom.js";
+import { clear, el, image } from "./dom.js";
 import {
   MAX_SERVINGS,
   MIN_SERVINGS,
@@ -158,6 +158,7 @@ function renderRecipe(recipe) {
   clear(root);
   root.append(
     el("h2", { class: "recipe-title" }, recipe.title),
+    ...(recipe.image_url ? [image(recipe.image_url, recipe.title, "recipe-image", { lazy: false })] : []),
     el(
       "p",
       { class: "muted" },

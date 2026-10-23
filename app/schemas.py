@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
@@ -52,6 +53,7 @@ class RecipeMatchOut(BaseModel):
     expiring: list[str]  # `have` içinden, yakında bozulacak (veya süresi geçmiş) malzemeler
     prep_minutes: int | None
     tags: list[str]
+    image_url: str | None
 
 
 class RecipeIngredientIn(BaseModel):
@@ -84,12 +86,20 @@ class RecipeIn(BaseModel):
 
     @field_validator("image_url")
     @classmethod
-    def image_url_must_be_http(cls, value: str | None) -> str | None:
+    def image_url_must_be_https(cls, value: str | None) -> str | None:
+        # Yalnızca https: sayfa https'tir, CSP (img-src) ve tarayıcı http görselini zaten engeller;
+        # kullanıcı adı/şifre içeren (user@host) ve boşluklu adresler reddedilir.
         value = (value or "").strip()
         if not value:
             return None
-        if not value.startswith(("http://", "https://")):
-            raise ValueError("Görsel adresi http:// veya https:// ile başlamalı.")
+        parts = urlsplit(value)
+        if (
+            parts.scheme.lower() != "https"
+            or not parts.hostname
+            or "@" in parts.netloc
+            or any(char.isspace() or ord(char) < 32 for char in value)
+        ):
+            raise ValueError("Görsel adresi geçerli bir https:// adresi olmalı.")
         return value
 
 

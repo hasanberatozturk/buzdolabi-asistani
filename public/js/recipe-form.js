@@ -1,6 +1,7 @@
 import * as api from "./api.js";
 import { clear, el } from "./dom.js";
 import { MAX_TAG_LENGTH, MAX_TAGS, hasTag, parseTags, toggleTag } from "./tags.js";
+import { imageUrlProblem, normalizeImageUrl } from "./url.js";
 
 const SUGGEST_DELAY_MS = 250;
 
@@ -13,6 +14,9 @@ const suggestions = document.querySelector("#ingredient-suggestions");
 const submitButton = document.querySelector("#submit");
 const cancelLink = document.querySelector("#cancel");
 const tagsInput = document.querySelector("#tags");
+const imageInput = document.querySelector("#image-url");
+const imageStatus = document.querySelector("#image-status");
+const imagePreview = document.querySelector("#image-preview");
 const tagSuggestions = document.querySelector("#tag-suggestions");
 
 const recipeId = new URLSearchParams(location.search).get("id");
@@ -134,6 +138,7 @@ function collect() {
     instructions: document.querySelector("#instructions").value.trim(),
     ingredients,
     tags: parseTags(tagsInput.value),
+    image_url: normalizeImageUrl(imageInput.value),
   };
 }
 
@@ -141,6 +146,8 @@ function validate(data) {
   if (!data.title) return "Başlık boş olamaz.";
   if (data.ingredients.length === 0) return "En az bir malzeme eklemelisin.";
   if (!data.instructions) return "Yapılış adımlarını yazmalısın.";
+  const imageProblem = imageUrlProblem(imageInput.value);
+  if (imageProblem) return imageProblem;
   if (data.tags.length > MAX_TAGS) return `En çok ${MAX_TAGS} etiket ekleyebilirsin.`;
   if (data.tags.some((tag) => tag.length > MAX_TAG_LENGTH)) return `Her etiket en çok ${MAX_TAG_LENGTH} karakter olabilir.`;
   return null;
@@ -154,6 +161,8 @@ function fill(recipe) {
   document.querySelector("#instructions").value = recipe.instructions;
   tagsInput.value = recipe.tags.join(", ");
   updateSuggestionStates();
+  imageInput.value = recipe.image_url ?? "";
+  updateImagePreview();
   clear(rows);
   recipe.ingredients.forEach(addRow);
 }
@@ -251,5 +260,34 @@ async function loadTagSuggestions() {
 }
 
 tagsInput.addEventListener("input", updateSuggestionStates);
+
+// Görsel önizlemesi: adres geçerliyse gösterilir; yüklenemezse bilgi verilir (kaydetmeyi engellemez)
+function showImageStatus(message) {
+  imageStatus.textContent = message;
+  imageStatus.hidden = !message;
+}
+
+function updateImagePreview() {
+  showImageStatus("");
+  imagePreview.hidden = true;
+  const problem = imageUrlProblem(imageInput.value);
+  if (problem) {
+    showImageStatus(problem);
+    return;
+  }
+  const url = normalizeImageUrl(imageInput.value);
+  if (url) imagePreview.src = url;
+}
+
+imagePreview.addEventListener("load", () => {
+  imagePreview.hidden = false;
+  showImageStatus("");
+});
+imagePreview.addEventListener("error", () => {
+  imagePreview.hidden = true;
+  showImageStatus("Görsel yüklenemedi: adres yanlış olabilir ya da görsel herkese açık değil. Yine de kaydedebilirsin.");
+});
+imageInput.addEventListener("change", updateImagePreview);
+
 loadTagSuggestions();
 init();

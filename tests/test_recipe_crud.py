@@ -75,6 +75,7 @@ def test_create_recipe_validation_errors(client):
         payload(prep_minutes=-5),
         payload(servings=0),
         payload(image_url="javascript:alert(1)"),
+        payload(image_url="http://example.com/a.jpg"),  # yalnızca https
     ]
     for bad in bad_payloads:
         assert http.post("/api/recipes", json=bad).status_code == 422, bad

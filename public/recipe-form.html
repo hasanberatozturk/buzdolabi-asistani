@@ -28,6 +28,13 @@
         </label>
 
         <label class="field">
+          <span>Görsel adresi <small class="muted">(isteğe bağlı, https:// ile başlamalı)</small></span>
+          <input id="image-url" type="url" maxlength="500" autocomplete="off" placeholder="https://…" />
+        </label>
+        <p id="image-status" class="status" role="status" aria-live="polite" hidden></p>
+        <img id="image-preview" class="card-image" alt="Görsel önizlemesi" referrerpolicy="no-referrer" hidden />
+
+        <label class="field">
           <span>Etiketler <small class="muted">(virgülle ayır, en çok 10; ör. kahvaltı, vegan)</small></span>
           <input id="tags" type="text" maxlength="600" autocomplete="off" />
         </label>
