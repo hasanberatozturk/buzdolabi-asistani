@@ -113,13 +113,15 @@ function shoppingButton(recipe, getServings) {
     message.replaceChildren();
     try {
       const result = await api.addMissingToShopping(recipe.id, getServings());
-      let text;
-      if (result.nothing_missing) text = "Eksik malzeme yok.";
-      else if (result.added === 0) text = "Eksik malzemelerin hepsi zaten listede.";
+      const parts = [];
+      if (result.nothing_missing) parts.push("Eksik malzeme yok.");
+      else if (result.added === 0 && result.merged === 0) parts.push("Eksik malzemelerin hepsi zaten listede.");
       else {
-        text = `${result.added} malzeme listeye eklendi.`;
-        if (result.already_listed > 0) text += ` ${result.already_listed} tanesi zaten listedeydi.`;
+        if (result.added > 0) parts.push(`${result.added} malzeme listeye eklendi.`);
+        if (result.merged > 0) parts.push(`${result.merged} malzemenin miktarı güncellendi.`);
+        if (result.already_listed > 0) parts.push(`${result.already_listed} tanesi zaten listedeydi.`);
       }
+      const text = parts.join(" ");
       message.append(`${text} `, el("a", { href: "/shopping.html" }, "Listeyi gör"));
     } catch (error) {
       message.classList.add("error");

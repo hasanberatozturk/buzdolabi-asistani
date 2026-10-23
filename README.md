@@ -147,6 +147,12 @@ unit           (opsiyonel)
 checked        bool          (satın alındı)
 added_at
 
+shopping_item_sources         (bir kaleme hangi tarifin ne kadar kattığı)
+─────────────────────
+item_id     FK → shopping_items, ON DELETE CASCADE ┐ birleşik PK
+recipe_id   FK → recipes, ON DELETE CASCADE        ┘ (index: recipe_id)
+quantity    (opsiyonel)
+
 tags                        recipe_tags
 ────                        ───────────
 id          PK              recipe_id  FK → recipes  ┐ birleşik PK
@@ -196,11 +202,13 @@ Tüm uç noktalar `/api` altında. Otomatik dokümantasyon: `/docs`
 | Metot | Yol | Açıklama |
 |---|---|---|
 | GET | `/api/shopping` | Liste (alınmamışlar önce, sonra ekleme sırasıyla). Her kayıtta `ingredient`, `quantity`, `unit`, `checked` |
-| POST | `/api/shopping/from-recipe` | `{ "recipe_id": 7, "servings": 4 }` — tarifin **zorunlu, buzdolabında olmayan** malzemelerini listeye ekler. İsteğe bağlı malzemeler ve temel malzemeler (su, tuz, karabiber) eklenmez; listede zaten olan atlanır. `servings` verilirse miktarlar tarifin porsiyonuna göre ölçeklenir. Yanıt: `{added, already_listed, nothing_missing}` |
+| POST | `/api/shopping/from-recipe` | `{ "recipe_id": 7, "servings": 4 }` — tarifin **zorunlu, buzdolabında olmayan** malzemelerini listeye ekler. İsteğe bağlı malzemeler ve temel malzemeler (su, tuz, karabiber) eklenmez; listede zaten olan atlanır. `servings` verilirse miktarlar tarifin porsiyonuna göre ölçeklenir. **Aynı malzemeyi isteyen tarifler toplanır** (aşağıya bak). Yanıt: `{added, merged, already_listed, nothing_missing}` |
 | PATCH | `/api/shopping/{id}` | `{ "checked": true }` — satın alındı işareti (alan zorunlu) |
 | POST | `/api/shopping/move-to-pantry` | İşaretli malzemeleri buzdolabına taşır (miktar/birimle) ve listeden çıkarır; zaten buzdolabında olan tekrar eklenmez. Yanıt: `{moved}` |
 | DELETE | `/api/shopping/{id}` | Malzemeyi listeden sil |
 | DELETE | `/api/shopping?only_checked=true` | Yalnızca işaretlileri sil; parametresiz tüm listeyi boşaltır |
+
+**Miktarların toplanması:** Listede zaten olan bir malzemeyi başka bir tarif de istiyorsa, **birimler aynıysa** (büyük/küçük harf fark etmez) ve iki miktar da varsa miktarlar toplanır (`merged`): Menemen 3 adet + Omlet 2 adet yumurta → 5 adet. Birim farklıysa ya da miktar yoksa mevcut kalem olduğu gibi kalır (`already_listed`). Her tarifin katkısı `shopping_item_sources` tablosunda ayrı tutulduğu için **aynı tarifi tekrar eklemek miktarı katlamaz**; porsiyonu değiştirip tekrar eklersen yalnızca o tarifin katkısı yenisiyle değiştirilir. Tarif silinirse katkı kaydı silinir, listedeki toplam değişmez. Liste temizlenirken ya da bir kalem silinirken/taşınırken katkı kayıtları da silinir.
 
 İki istek aynı malzemeyi aynı anda eklemeye çalışırsa ikincisi benzersiz kısıta çarpar; işlem geri alınıp bir kez yeniden denenir (kazanan kayıt görünür ve atlanır).
 
@@ -352,7 +360,7 @@ SQLite `ALTER TABLE` desteği sınırlı olduğu için `migrations/env.py` için
 ### `recipe.html?id=7` – Tarif detay
 - Malzeme listesi: ✅ var / ❌ eksik işaretli
 - **Porsiyon seçici** (−/+ düğmeleri ve sayı alanı, 1–1000): miktarlar seçilen porsiyona göre orantılı hesaplanır (`yeni = miktar × seçilen ÷ tarifin porsiyonu`), Türkçe biçimde en çok 2 ondalıkla gösterilir ("1,5 su bardağı"). Tarifin kayıtlı porsiyonu yoksa seçici görünmez ve miktarlar değişmez; miktarı olmayan malzemeler ölçeklenmez. Yapılış adımlarının metni ölçeklenmez; porsiyon değişince bunu belirten bir not gösterilir. Seçim kaydedilmez (sayfa yenilenince tarifin porsiyonuna döner). Hesaplama `public/js/scale.js` içindedir
-- **"🛒 Eksik malzemeleri alışveriş listesine ekle"** düğmesi (eksik zorunlu malzeme varsa görünür): seçili porsiyona göre ölçeklenmiş miktarlarla ekler; sonucu "4 malzeme listeye eklendi" / "hepsi zaten listede" şeklinde bildirir
+- **"🛒 Eksik malzemeleri alışveriş listesine ekle"** düğmesi (eksik zorunlu malzeme varsa görünür): seçili porsiyona göre ölçeklenmiş miktarlarla ekler; sonucu "4 malzeme listeye eklendi", "2 malzemenin miktarı güncellendi" ya da "hepsi zaten listede" şeklinde bildirir
 - Numaralı yapılış adımları
 - Düzenle / Sil butonları
 

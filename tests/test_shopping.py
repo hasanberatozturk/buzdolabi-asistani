@@ -54,7 +54,7 @@ def test_from_recipe_adds_missing_required_ingredients_with_amounts(client):
     response = http.post("/api/shopping/from-recipe", json={"recipe_id": recipe_id})
 
     assert response.status_code == 200
-    assert response.json() == {"added": 2, "already_listed": 0, "nothing_missing": False}
+    assert response.json() == {"added": 2, "merged": 0, "already_listed": 0, "nothing_missing": False}
     items = http.get("/api/shopping").json()
     assert [(i["ingredient"]["name"], i["quantity"], i["unit"], i["checked"]) for i in items] == [
         ("Süt", 1, "su bardağı", False),
@@ -69,7 +69,7 @@ def test_adding_the_same_recipe_twice_does_not_duplicate_items(client):
 
     second = http.post("/api/shopping/from-recipe", json={"recipe_id": recipe_id})
 
-    assert second.json() == {"added": 0, "already_listed": 2, "nothing_missing": False}
+    assert second.json() == {"added": 0, "merged": 0, "already_listed": 2, "nothing_missing": False}
     assert count(db, ShoppingItem) == 2
 
 
@@ -81,7 +81,7 @@ def test_second_recipe_only_adds_ingredients_not_already_listed(client):
 
     result = http.post("/api/shopping/from-recipe", json={"recipe_id": second}).json()
 
-    assert result == {"added": 1, "already_listed": 1, "nothing_missing": False}
+    assert result == {"added": 1, "merged": 0, "already_listed": 1, "nothing_missing": False}
     assert names(http) == ["Un", "Süt", "Şeker"]
 
 
@@ -92,7 +92,7 @@ def test_nothing_missing_when_everything_is_in_the_pantry(client):
 
     result = http.post("/api/shopping/from-recipe", json={"recipe_id": recipe_id})
 
-    assert result.json() == {"added": 0, "already_listed": 0, "nothing_missing": True}
+    assert result.json() == {"added": 0, "merged": 0, "already_listed": 0, "nothing_missing": True}
     assert http.get("/api/shopping").json() == []
 
 

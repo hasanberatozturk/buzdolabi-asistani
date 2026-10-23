@@ -13,6 +13,7 @@ TABLES = (
     "shopping_items",
     "tags",
     "recipe_tags",
+    "shopping_item_sources",
 )
 
 

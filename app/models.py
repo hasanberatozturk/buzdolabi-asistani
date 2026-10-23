@@ -53,6 +53,10 @@ class Recipe(Base):
         back_populates="recipe", cascade="all, delete-orphan"
     )
     tags: Mapped[list[Tag]] = relationship(secondary=recipe_tags, order_by=Tag.normalized)
+    # Alışveriş listesine kattığı miktarlar; tarif silinince bu kayıtlar da silinir
+    shopping_sources: Mapped[list["ShoppingItemSource"]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
 
 class RecipeIngredient(Base):
@@ -93,3 +97,21 @@ class ShoppingItem(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     ingredient: Mapped[Ingredient] = relationship()
+    # Bu kaleme hangi tarifin ne kadar kattığı (aynı tarifi tekrar eklemek miktarı katlamasın diye)
+    sources: Mapped[list["ShoppingItemSource"]] = relationship(
+        cascade="all, delete-orphan"
+    )
+
+
+class ShoppingItemSource(Base):
+    """Bir alışveriş kalemine bir tarifin kattığı miktar (kalem başına tarif başına en fazla bir kayıt)."""
+
+    __tablename__ = "shopping_item_sources"
+
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("shopping_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    recipe_id: Mapped[int] = mapped_column(
+        ForeignKey("recipes.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    quantity: Mapped[float | None] = mapped_column(Float, nullable=True)

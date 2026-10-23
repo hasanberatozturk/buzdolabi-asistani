@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
-from app.models import PantryItem, Recipe, RecipeIngredient, ShoppingItem
+from app.models import PantryItem, Recipe, RecipeIngredient, ShoppingItem, ShoppingItemSource
 from app.schemas import (
     MAX_ID,
     IngredientOut,
@@ -18,7 +18,7 @@ from app.schemas import (
     ShoppingUpdate,
 )
 from app.security import require_api_key
-from app.services.shopping import RecipeRow, missing_ingredients
+from app.services.shopping import ListedItem, RecipeRow, missing_ingredients, plan_additions
 
 router = APIRouter(prefix="/api/shopping", tags=["shopping"])
 
@@ -95,20 +95,48 @@ def add_missing_from_recipe(
         target_servings=payload.servings,
     )
     if not missing:
-        return ShoppingAddResult(added=0, already_listed=0, nothing_missing=True)
+        return ShoppingAddResult(added=0, merged=0, already_listed=0, nothing_missing=True)
 
-    def work() -> int:
-        listed = set(db.scalars(select(ShoppingItem.ingredient_id)))
-        new = [item for item in missing if item.ingredient_id not in listed]
-        db.add_all(
-            ShoppingItem(ingredient_id=item.ingredient_id, quantity=item.quantity, unit=item.unit)
-            for item in new
+    def work() -> tuple[int, int, int]:
+        items = {
+            item.ingredient_id: item
+            for item in db.scalars(select(ShoppingItem).options(selectinload(ShoppingItem.sources)))
+        }
+        plan = plan_additions(
+            recipe.id,
+            missing,
+            {
+                ingredient_id: ListedItem(
+                    ingredient_id=ingredient_id,
+                    quantity=item.quantity,
+                    unit=item.unit,
+                    sources={source.recipe_id: source.quantity for source in item.sources},
+                )
+                for ingredient_id, item in items.items()
+            },
         )
-        return len(new)
+        for new in plan.new:
+            db.add(
+                ShoppingItem(
+                    ingredient_id=new.ingredient_id,
+                    quantity=new.quantity,
+                    unit=new.unit,
+                    sources=[ShoppingItemSource(recipe_id=recipe.id, quantity=new.quantity)],
+                )
+            )
+        for merge in plan.merges:
+            item = items[merge.ingredient_id]
+            item.quantity = merge.quantity
+            source = next((s for s in item.sources if s.recipe_id == recipe.id), None)
+            if source is None:
+                item.sources.append(ShoppingItemSource(recipe_id=recipe.id, quantity=merge.source_quantity))
+            else:
+                source.quantity = merge.source_quantity
+        return len(plan.new), len(plan.merges), plan.unchanged
 
-    added = _commit_retrying_on_conflict(db, work)
+    added, merged, unchanged = _commit_retrying_on_conflict(db, work)
     return ShoppingAddResult(
-        added=added, already_listed=len(missing) - added, nothing_missing=False
+        added=added, merged=merged, already_listed=unchanged, nothing_missing=False
     )
 
 
@@ -164,9 +192,15 @@ def remove_shopping_item(
 
 @router.delete("", status_code=204, dependencies=[Depends(require_api_key)])
 def clear_shopping(only_checked: bool = False, db: Session = Depends(get_db)) -> Response:
-    stmt = delete(ShoppingItem)
-    if only_checked:
-        stmt = stmt.where(ShoppingItem.checked)
-    db.execute(stmt)
+    # Toplu silme ORM zincirleme silmesini atlar (SQLite'ta yabancı anahtarlar da kapalıdır);
+    # kaynak kayıtları önce açıkça silinir, yoksa yetim kalıp yeniden kullanılan id'lere yapışabilir.
+    item_filter = ShoppingItem.checked if only_checked else None
+    sources = delete(ShoppingItemSource)
+    items = delete(ShoppingItem)
+    if item_filter is not None:
+        sources = sources.where(ShoppingItemSource.item_id.in_(select(ShoppingItem.id).where(item_filter)))
+        items = items.where(item_filter)
+    db.execute(sources)
+    db.execute(items)
     db.commit()
     return Response(status_code=204)

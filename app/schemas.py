@@ -172,7 +172,8 @@ class ShoppingFromRecipe(BaseModel):
 
 class ShoppingAddResult(BaseModel):
     added: int  # listeye yeni eklenen malzeme sayısı
-    already_listed: int  # eksik olup zaten listede bulunan malzeme sayısı
+    merged: int  # zaten listede olup miktarı toplanan ya da güncellenen malzeme sayısı
+    already_listed: int  # zaten listede olup değişmeyen malzeme sayısı (aynı tarif, farklı birim vb.)
     nothing_missing: bool  # tarifte buzdolabında olmayan zorunlu malzeme yok
 
 
